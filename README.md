@@ -8,6 +8,8 @@
 |---|---|---|---|
 | `OGREF_Beta.html` | **本番**（他の人もアクセス） | `workspaces` 等（実データ） | https://ogshaw03.github.io/OGREF/OGREF_Beta.html |
 | `OGREF_dev.html` | **開発用** | `dev_workspaces` 等（分離データ） | https://ogshaw03.github.io/OGREF/OGREF_dev.html |
+| `OGREF_Canvas.html` | **自由配置版（PureRef風・開発中）**。OGREF_dev と**同じ dev データ**（ワークスペース/動画）を共有し、各動画の `canvas:{x,y,w,z}` 配置を別途保存して無限キャンバスに自由配置 | `dev_workspaces` 等（dev と共有） | https://ogshaw03.github.io/OGREF/OGREF_Canvas.html |
+| `OGREF_admin.html` | **運営コンソール**（メンテナンス/お知らせ/アクセス管理） | `access_control` 等 | https://ogshaw03.github.io/OGREF/OGREF_admin.html |
 
 - DB: Firebase Firestore（プロジェクト `animref-ef532` / `asia-northeast1`）
 - 認証: Google（承認済みドメイン `ogshaw03.github.io`）
