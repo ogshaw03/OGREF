@@ -945,6 +945,7 @@ const C_AC=DEV_MODE?'dev_access_control':'access_control';
 const C_USERS=DEV_MODE?'dev_users':'users';
 const C_FB=DEV_MODE?'dev_feedback':'feedback';
 const C_AREQ=DEV_MODE?'dev_access_requests':'access_requests';   // アクセス権付与申請
+const C_INV=DEV_MODE?'dev_access_invites':'access_invites';      // 招待リンク（承認不要）
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -1006,7 +1007,16 @@ onAuthStateChanged(auth, async user=>{
     document.getElementById('headerAvatar').src=user.photoURL||'';
     document.getElementById('loginScreen').classList.add('hidden');
     // Check access
-    const access=await checkAccess(user);
+    let access=await checkAccess(user);
+    if(!access){
+      // 招待リンク（承認不要）からの自動メンバー登録を試みる
+      const redeemed=await tryRedeemInvite(user);
+      if(redeemed){
+        access='member';
+        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}
+        notify('招待リンクからアクセスが許可されました');
+      }
+    }
     currentRole=access;
     if(!access){
       document.getElementById('deniedEmail').textContent='ログイン中: '+user.email;
@@ -1111,6 +1121,31 @@ async function checkAccess(user){
   }catch(e){
     return 'member';
   }
+}
+
+// 招待リンク（承認不要）からの自動メンバー登録。成功すれば true。
+async function tryRedeemInvite(user){
+  const hp=parseHash();
+  const token=hp&&hp.invite?String(hp.invite).trim():'';
+  if(!token||!user||!user.email)return false;
+  try{
+    const invRef=doc(db,C_INV,token);
+    const invSnap=await getDoc(invRef);
+    if(!invSnap.exists())return false;
+    const inv=invSnap.data()||{};
+    if(inv.active===false)return false;   // 無効化済みリンク
+    // 自分をメンバーに追加（既に許可済みなら何もしない）
+    const accSnap=await getDoc(ACCESS_DOC);
+    const data=accSnap.exists()?accSnap.data():{};
+    const members=[...(data.allowedEmails||[])];
+    if(!members.includes(user.email)){
+      members.push(user.email);
+      await setDoc(ACCESS_DOC,{allowedEmails:members},{merge:true});
+    }
+    // 利用記録（任意・失敗しても続行）
+    try{ await setDoc(invRef,{uses:(inv.uses||0)+1,lastUsedAt:Date.now(),lastUsedBy:user.email||''},{merge:true}); }catch(_){}
+    return true;
+  }catch(e){ return false; }
 }
 
 // ===== アクセス権付与申請（拒否画面 → 運営コンソールで承認） =====

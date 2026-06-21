@@ -188,6 +188,17 @@
         <div id="reqAdminList"></div>
       </div>
 
+      <!-- Invite links (招待リンク: 承認不要) -->
+      <div class="card">
+        <div class="card-title">🔗 招待リンク（承認不要）</div>
+        <div class="card-desc">このリンクから入った人は<b>承認なしで自動的にメンバー</b>になります。何人でも使えます（無効化するまで有効）。配布先は信頼できる範囲に限定してください。</div>
+        <div class="row" style="margin-top:8px;gap:8px">
+          <input id="invLabel" type="text" placeholder="メモ（任意・例: 〇〇さん用 / Discord配布）" style="flex:1;min-width:180px">
+          <button class="btn btn-primary" id="invCreateBtn">＋ リンクを発行</button>
+        </div>
+        <div id="invList" style="margin-top:12px"></div>
+      </div>
+
       <!-- Feedback (意見一覧) -->
       <div class="card">
         <div class="card-title">📋 意見一覧</div>
@@ -222,7 +233,7 @@ const provider = new GoogleAuthProvider();
 let currentUser=null;
 let env='dev';
 let isOperator=false;
-let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null;
+let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null, unsubInv=null;
 
 const $=id=>document.getElementById(id);
 function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -239,6 +250,7 @@ function maintRef(){return doc(db,acCol(),'maintenance');}
 function bcastRef(){return doc(db,acCol(),'broadcast');}
 function fbCol(){return env==='prod'?'feedback':'dev_feedback';}
 function areqCol(){return env==='prod'?'access_requests':'dev_access_requests';}
+function invCol(){return env==='prod'?'access_invites':'dev_access_invites';}
 function fmtTime(ts){if(!ts)return'';const d=new Date(ts);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 // 運営ユーザー一覧。operatorEmails未設定なら旧adminEmailsを運営として移行扱い
 function operatorListFrom(data){
@@ -265,7 +277,7 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} }
+function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} if(unsubInv){unsubInv();unsubInv=null} }
 
 $('envSwitch').querySelectorAll('button').forEach(b=>{
   b.onclick=async()=>{
@@ -308,6 +320,7 @@ function subscribeAll(){
   unsubBcast=onSnapshot(bcastRef(), snap=>renderBroadcast(snap.exists()?snap.data():{}), err=>{});
   unsubFb=onSnapshot(query(collection(db,fbCol()),orderBy('createdAt','desc')), snap=>renderFbAdmin(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
   unsubReq=onSnapshot(collection(db,areqCol()), snap=>renderAccessRequests(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
+  unsubInv=onSnapshot(collection(db,invCol()), snap=>renderInvites(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
 }
 
 // ── アクセス権の申請（承認＝メンバー追加 / 却下） ──
@@ -353,6 +366,74 @@ window.rejectRequest=async function(id){
     await setDoc(doc(db,areqCol(),id),{status:'rejected',note:note||'',resolvedBy:currentUser.email||'',resolvedAt:Date.now()},{merge:true});
     notify('却下しました: '+(r.email||id));
   }catch(e){ notify('却下失敗: '+e.message); }
+};
+
+// ── 招待リンク（承認不要・自動メンバー登録） ──
+let lastInvites=[];
+function inviteBase(){
+  const dir=location.pathname.replace(/[^/]*$/,'');
+  const app=env==='prod'?'OGREF_Beta.html':'OGREF_dev.html';
+  return location.origin+dir+app+'#invite=';
+}
+function genToken(){
+  const a=new Uint8Array(12); crypto.getRandomValues(a);
+  return Array.from(a,b=>b.toString(36).padStart(2,'0')).join('').slice(0,16);
+}
+function renderInvites(items){
+  lastInvites=items||[];
+  const list=$('invList'); if(!list)return;
+  const note=env==='prod'?'<div style="font-size:11px;color:var(--amber);margin-bottom:8px">※ 本番リンクの自動許可はBeta側の対応後に有効になります（現在はDEVのみ対応）。</div>':'';
+  if(!lastInvites.length){ list.innerHTML=note+'<div style="font-size:12px;color:var(--text3)">発行済みの招待リンクはありません</div>'; return; }
+  const sorted=[...lastInvites].sort((a,b)=>(b.active!==false)-(a.active!==false)||(b.createdAt||0)-(a.createdAt||0));
+  const row=i=>{
+    const url=inviteBase()+i.id, on=i.active!==false;
+    const meta=[i.label?escH(i.label):'（メモなし）','参加 '+(i.uses||0)+'人',on?'<span style="color:var(--green)">有効</span>':'<span style="color:var(--text3)">無効</span>'].join(' ・ ');
+    const acts=on
+      ? `<button class="btn btn-sm" onclick="copyInvite('${i.id}')">コピー</button><button class="btn btn-sm" onclick="revokeInvite('${i.id}')">無効化</button>`
+      : `<button class="btn btn-sm" onclick="restoreInvite('${i.id}')">再有効化</button><button class="btn btn-sm btn-danger" onclick="deleteInvite('${i.id}')">削除</button>`;
+    return `<div style="border:1px solid var(--border2);border-radius:8px;padding:10px 11px;margin-bottom:8px;background:var(--bg3);opacity:${on?1:.6}">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${meta}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input readonly value="${escH(url)}" onclick="this.select()" style="flex:1;min-width:200px;font-size:12px">
+        ${acts}
+      </div>
+    </div>`;
+  };
+  list.innerHTML=note+sorted.map(row).join('');
+}
+window.createInvite=async function(){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  const label=($('invLabel').value||'').trim();
+  const token=genToken();
+  try{
+    await setDoc(doc(db,invCol(),token),{active:true,label,role:'member',createdBy:currentUser.email||'',createdAt:Date.now(),uses:0});
+    $('invLabel').value='';
+    const url=inviteBase()+token;
+    try{ await navigator.clipboard.writeText(url); notify('招待リンクを発行しコピーしました'); }
+    catch(_){ notify('招待リンクを発行しました'); }
+  }catch(e){ notify('発行失敗: '+e.message); }
+};
+window.copyInvite=async function(token){
+  const url=inviteBase()+token;
+  try{ await navigator.clipboard.writeText(url); notify('リンクをコピーしました'); }
+  catch(_){ notify('コピーできませんでした。リンク欄を選択して手動コピーしてください'); }
+};
+window.revokeInvite=async function(token){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  if(!confirm('このリンクを無効化しますか？（以後このリンクからは参加できなくなります。参加済みの人はそのまま利用できます）'))return;
+  try{ await setDoc(doc(db,invCol(),token),{active:false,revokedBy:currentUser.email||'',revokedAt:Date.now()},{merge:true}); notify('無効化しました'); }
+  catch(e){ notify('失敗: '+e.message); }
+};
+window.restoreInvite=async function(token){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  try{ await setDoc(doc(db,invCol(),token),{active:true},{merge:true}); notify('再有効化しました'); }
+  catch(e){ notify('失敗: '+e.message); }
+};
+window.deleteInvite=async function(token){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  if(!confirm('このリンクを完全に削除しますか？元に戻せません。'))return;
+  try{ await deleteDoc(doc(db,invCol(),token)); notify('削除しました'); }
+  catch(e){ notify('削除失敗: '+e.message); }
 };
 
 // ── 意見一覧（フィードバック） ──
@@ -616,6 +697,8 @@ async function addUserFrom(d){
   }catch(e){notify('追加失敗: '+e.message)}
 }
 $('openAccessBtn').onclick=openAccessWindow;
+$('invCreateBtn').onclick=createInvite;
+$('invLabel').addEventListener('keydown',e=>{ if(e.key==='Enter')createInvite(); });
 </script>
 </body>
 </html>
