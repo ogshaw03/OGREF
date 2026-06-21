@@ -73,6 +73,16 @@
   .role.op{background:rgba(255,184,90,.18);color:#ffcf8a;border:1px solid rgba(255,184,90,.4)}
   .role.member{background:rgba(90,255,160,.13);color:#7fe6ad;border:1px solid rgba(90,255,160,.3)}
   .empty{font-size:12px;color:var(--text3);padding:6px 2px}
+  .req-badge{font-size:11px;font-weight:700;color:#fff;background:var(--amber);border-radius:999px;padding:2px 9px;margin-left:4px}
+  .req-item{border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg3);padding:12px 13px;margin-bottom:10px}
+  .req-head{display:flex;align-items:center;gap:10px}
+  .req-av{width:30px;height:30px;border-radius:50%;background:var(--bg4);flex-shrink:0}
+  .req-id{display:flex;flex-direction:column;min-width:0;flex:1}
+  .req-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .req-email{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .req-time{font-size:11px;color:var(--text3);flex-shrink:0}
+  .req-reason{font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 10px;margin:9px 0;white-space:pre-wrap;line-height:1.6}
+  .req-actions{display:flex;gap:8px;flex-wrap:wrap}
   .add-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
   .add-row input{flex:1;min-width:160px}
   .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);white-space:nowrap;cursor:pointer}
@@ -171,6 +181,13 @@
         <div class="card-desc" style="margin:10px 0 0">別ウィンドウで一覧の<b>検索</b>・ユーザー追加・権限変更（運営/管理者/メンバー）ができます。ウィンドウは開いたまま操作内容が即時反映されます。</div>
       </div>
 
+      <!-- Access requests (アクセス権の申請) -->
+      <div class="card">
+        <div class="card-title">🙋 アクセス権の申請 <span id="reqBadge" class="req-badge" style="display:none"></span></div>
+        <div class="card-desc">OGREF（Beta等）の利用希望者が拒否画面から送った申請です。<b>承認</b>するとメンバーとして追加され、利用できるようになります。</div>
+        <div id="reqAdminList"></div>
+      </div>
+
       <!-- Feedback (意見一覧) -->
       <div class="card">
         <div class="card-title">📋 意見一覧</div>
@@ -205,7 +222,7 @@ const provider = new GoogleAuthProvider();
 let currentUser=null;
 let env='dev';
 let isOperator=false;
-let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null;
+let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null;
 
 const $=id=>document.getElementById(id);
 function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -218,6 +235,7 @@ function configRef(){return doc(db,acCol(),'config');}
 function maintRef(){return doc(db,acCol(),'maintenance');}
 function bcastRef(){return doc(db,acCol(),'broadcast');}
 function fbCol(){return env==='prod'?'feedback':'dev_feedback';}
+function areqCol(){return env==='prod'?'access_requests':'dev_access_requests';}
 function fmtTime(ts){if(!ts)return'';const d=new Date(ts);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 // 運営ユーザー一覧。operatorEmails未設定なら旧adminEmailsを運営として移行扱い
 function operatorListFrom(data){
@@ -244,7 +262,7 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} }
+function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} }
 
 $('envSwitch').querySelectorAll('button').forEach(b=>{
   b.onclick=async()=>{
@@ -286,7 +304,53 @@ function subscribeAll(){
   unsubMaint=onSnapshot(maintRef(), snap=>renderMaintenance(snap.exists()?snap.data():{}), err=>{});
   unsubBcast=onSnapshot(bcastRef(), snap=>renderBroadcast(snap.exists()?snap.data():{}), err=>{});
   unsubFb=onSnapshot(query(collection(db,fbCol()),orderBy('createdAt','desc')), snap=>renderFbAdmin(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
+  unsubReq=onSnapshot(collection(db,areqCol()), snap=>renderAccessRequests(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
 }
+
+// ── アクセス権の申請（承認＝メンバー追加 / 却下） ──
+let lastReqs=[];
+function renderAccessRequests(items){
+  lastReqs=items||[];
+  const pending=lastReqs.filter(r=>(r.status||'pending')==='pending');
+  const badge=$('reqBadge');
+  if(badge){ if(pending.length){badge.style.display='';badge.textContent=pending.length+'件';}else badge.style.display='none'; }
+  const list=$('reqAdminList'); if(!list)return;
+  if(!pending.length){ list.innerHTML='<div class="empty">保留中の申請はありません</div>'; return; }
+  pending.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  list.innerHTML=pending.map(r=>`<div class="req-item">
+    <div class="req-head">
+      ${r.photoURL?`<img class="req-av" src="${escH(r.photoURL)}" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:''}
+      <div class="req-id"><span class="req-name">${escH(r.name||'（名前未記入）')}</span><span class="req-email">${escH(r.email||'')}</span></div>
+      <span class="req-time">${r.createdAt?fmtTime(r.createdAt):''}</span>
+    </div>
+    ${r.reason?`<div class="req-reason">${escH(r.reason)}</div>`:''}
+    <div class="req-actions">
+      <button class="btn btn-primary btn-sm" onclick="approveRequest('${escH(r.id)}')">✓ 承認（メンバー追加）</button>
+      <button class="btn btn-danger btn-sm" onclick="rejectRequest('${escH(r.id)}')">却下</button>
+    </div>
+  </div>`).join('');
+}
+window.approveRequest=async function(id){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  const r=lastReqs.find(x=>x.id===id); if(!r)return;
+  if(!r.email)return notify('メールアドレスが不明な申請です');
+  if(!confirm(`${r.email} をメンバーとして承認しますか？`))return;
+  try{
+    await setRole(r.email,'member');
+    await setDoc(doc(db,areqCol(),id),{status:'approved',resolvedBy:currentUser.email||'',resolvedAt:Date.now()},{merge:true});
+    notify('承認しました: '+r.email);
+  }catch(e){ notify('承認失敗: '+e.message); }
+};
+window.rejectRequest=async function(id){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  const r=lastReqs.find(x=>x.id===id); if(!r)return;
+  const note=prompt('却下理由（任意・申請者に表示されます）','');
+  if(note===null)return;
+  try{
+    await setDoc(doc(db,areqCol(),id),{status:'rejected',note:note||'',resolvedBy:currentUser.email||'',resolvedAt:Date.now()},{merge:true});
+    notify('却下しました: '+(r.email||id));
+  }catch(e){ notify('却下失敗: '+e.message); }
+};
 
 // ── 意見一覧（フィードバック） ──
 const FB_ST={
