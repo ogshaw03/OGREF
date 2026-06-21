@@ -203,7 +203,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -591,7 +591,10 @@ async function setRole(email,target){
     if(target==='operator')operators.push(email);
     else if(target==='admin')admins.push(email);
     else if(target==='member')members.push(email);
-    await setDoc(configRef(),{operatorEmails:operators,adminEmails:admins,allowedEmails:members},{merge:true});
+    const upd={operatorEmails:operators,adminEmails:admins,allowedEmails:members};
+    // 旧スキーマの単数フィールド adminEmail を除去（残ると削除した相手が再表示される）
+    if('adminEmail' in data) upd.adminEmail=deleteField();
+    await setDoc(configRef(),upd,{merge:true});
     notify(target==='remove'?('削除しました: '+email):(roleLabel[target]+'に変更しました: '+email));
   }catch(e){notify('失敗: '+e.message)}
 }
