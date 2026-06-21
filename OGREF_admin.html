@@ -203,7 +203,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -230,6 +230,9 @@ function notify(msg){
   const n=$('notification');if(n){n.textContent=msg;n.style.display='block';clearTimeout(n._t);n._t=setTimeout(()=>n.style.display='none',3500);}
   if(accessWin&&!accessWin.closed){const an=accessWin.document.getElementById('awNote');if(an){an.textContent=msg;an.style.display='block';clearTimeout(an._t);an._t=setTimeout(()=>{an.style.display='none';},3500);}}
 }
+// アクセス管理は別ウィンドウ。確認ダイアログは操作中のウィンドウに出す
+// （親ウィンドウのconfirmはポップアップ操作中に背後に出る/抑制され、削除が実行されない）
+function uiConfirm(msg){ const w=(accessWin&&!accessWin.closed)?accessWin:window; return w.confirm(msg); }
 function acCol(){return env==='prod'?'access_control':'dev_access_control';}
 function configRef(){return doc(db,acCol(),'config');}
 function maintRef(){return doc(db,acCol(),'maintenance');}
@@ -580,9 +583,9 @@ async function setRole(email,target){
     return notify('最後の運営ユーザーは降格・削除できません。先に別の運営ユーザーを追加してください。');
   }
   if(email===currentUser.email && target!=='operator'){
-    if(!confirm('自分自身の権限を変更します。コンソールを操作できなくなる可能性があります。続行しますか？'))return;
+    if(!uiConfirm('自分自身の権限を変更します。コンソールを操作できなくなる可能性があります。続行しますか？'))return;
   } else if(target==='remove'){
-    if(!confirm(`${email} を削除しますか？`))return;
+    if(!uiConfirm(`${email} を削除しますか？`))return;
   }
   try{
     let operators=curOperators.filter(e=>e!==email);
@@ -591,7 +594,10 @@ async function setRole(email,target){
     if(target==='operator')operators.push(email);
     else if(target==='admin')admins.push(email);
     else if(target==='member')members.push(email);
-    await setDoc(configRef(),{operatorEmails:operators,adminEmails:admins,allowedEmails:members},{merge:true});
+    const upd={operatorEmails:operators,adminEmails:admins,allowedEmails:members};
+    // 旧スキーマの単数フィールド adminEmail を除去（残ると削除した相手が再表示される）
+    if('adminEmail' in data) upd.adminEmail=deleteField();
+    await setDoc(configRef(),upd,{merge:true});
     notify(target==='remove'?('削除しました: '+email):(roleLabel[target]+'に変更しました: '+email));
   }catch(e){notify('失敗: '+e.message)}
 }

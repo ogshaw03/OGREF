@@ -921,7 +921,7 @@ body.no-perm .m-menu-item.gated{display:none!important}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1466,9 +1466,12 @@ window.amRemove=async function(email,isAdmin=false){
   if(!confirm(`${email} を削除しますか？`))return;
   try{
     const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
-    const upd={};
-    if(isAdmin){upd.adminEmails=(data.adminEmails||[]).filter(e=>e!==email)}
-    else{upd.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email)}
+    const upd={
+      adminEmails:(data.adminEmails||[]).filter(e=>e!==email),
+      allowedEmails:(data.allowedEmails||[]).filter(e=>e!==email)
+    };
+    // 旧スキーマの単数フィールド adminEmail を除去（残ると再表示され削除できない）
+    if(data.adminEmail===email)upd.adminEmail=deleteField();
     await updateDoc(ACCESS_DOC,upd);
     await amRender();notify('削除しました');
   }catch(e){notify('削除失敗: '+e.message)}
@@ -1508,13 +1511,12 @@ window.removeAllowedUser=async function(email,isAdmin=false){
   try{
     const snap=await getDoc(ACCESS_DOC);
     const data=snap.data()||{};
-    const update={};
-    if(isAdmin){
-      const admins=(data.adminEmails||[]).filter(e=>e!==email);
-      update.adminEmails=admins;
-    }else{
-      update.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email);
-    }
+    const update={
+      adminEmails:(data.adminEmails||[]).filter(e=>e!==email),
+      allowedEmails:(data.allowedEmails||[]).filter(e=>e!==email)
+    };
+    // 旧スキーマの単数フィールド adminEmail を除去（残ると再表示され削除できない）
+    if(data.adminEmail===email)update.adminEmail=deleteField();
     await updateDoc(ACCESS_DOC,update);
     await renderAllowedUsers();
     notify('削除しました');
