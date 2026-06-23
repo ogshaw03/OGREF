@@ -233,7 +233,8 @@ const provider = new GoogleAuthProvider();
 let currentUser=null;
 let env='dev';
 let isOperator=false;
-let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null, unsubInv=null;
+let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null, unsubInv=null, unsubLU=null;
+let nameByEmail={};
 
 const $=id=>document.getElementById(id);
 function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -247,6 +248,13 @@ function uiConfirm(msg){ const w=(accessWin&&!accessWin.closed)?accessWin:window
 function acCol(){return env==='prod'?'access_control':'dev_access_control';}
 function configRef(){return doc(db,acCol(),'config');}
 function maintRef(){return doc(db,acCol(),'maintenance');}
+function luRef(){return doc(db,acCol(),'loggedUsers');}
+// loggedUsers(uid->{email,displayName}) から email→表示名 の対応を作る
+function buildNameMap(users){
+  nameByEmail={};
+  Object.values(users||{}).forEach(u=>{ if(u&&u.email&&u.displayName){ nameByEmail[String(u.email).toLowerCase()]=u.displayName; } });
+}
+function nameOf(email){ return nameByEmail[String(email||'').toLowerCase()]||''; }
 function bcastRef(){return doc(db,acCol(),'broadcast');}
 function fbCol(){return env==='prod'?'feedback':'dev_feedback';}
 function areqCol(){return env==='prod'?'access_requests':'dev_access_requests';}
@@ -277,7 +285,7 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} if(unsubInv){unsubInv();unsubInv=null} }
+function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} if(unsubInv){unsubInv();unsubInv=null} if(unsubLU){unsubLU();unsubLU=null} nameByEmail={}; }
 
 $('envSwitch').querySelectorAll('button').forEach(b=>{
   b.onclick=async()=>{
@@ -321,6 +329,7 @@ function subscribeAll(){
   unsubFb=onSnapshot(query(collection(db,fbCol()),orderBy('createdAt','desc')), snap=>renderFbAdmin(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
   unsubReq=onSnapshot(collection(db,areqCol()), snap=>renderAccessRequests(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
   unsubInv=onSnapshot(collection(db,invCol()), snap=>renderInvites(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
+  unsubLU=onSnapshot(luRef(), snap=>{ buildNameMap(snap.exists()?(snap.data().users||{}):{}); paintAccess(); }, err=>{});
 }
 
 // ── アクセス権の申請（承認＝メンバー追加 / 却下） ──
@@ -562,7 +571,11 @@ function paintAccess(){
   const mkRow=(email,role,btns)=>{
     const isSelf=currentUser&&email===currentUser.email;
     const row=d.createElement('div');row.className='u-row';
-    row.innerHTML=`<span class="u-email">${escH(email)}${isSelf?'（あなた）':''}</span><span class="role ${role.cls}">${role.label}</span>`;
+    const nm=nameOf(email), self=isSelf?'（あなた）':'';
+    const inner=nm
+      ? `<span class="u-name">${escH(nm)}${self}</span><span class="u-mail">${escH(email)}</span>`
+      : `<span class="u-name">${escH(email)}${self}</span>`;
+    row.innerHTML=`<span class="u-email">${inner}</span><span class="role ${role.cls}">${role.label}</span>`;
     btns.forEach(([label,fn,danger,disabled])=>{
       const b=d.createElement('button');b.className='btn btn-sm'+(danger?' btn-danger':'');b.textContent=label;b.disabled=!!disabled;b.onclick=fn;row.appendChild(b);
     });
@@ -623,7 +636,9 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .sub-label{font-size:12px;color:var(--text2);font-weight:700;margin:14px 0 6px}
 .u-list{display:flex;flex-direction:column;gap:8px}
 .u-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg3)}
-.u-email{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.u-email{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+.u-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u-mail{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .role{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:.5px}
 .role.op{background:rgba(255,184,90,.18);color:#ffcf8a;border:1px solid rgba(255,184,90,.4)}
 .role.admin{background:rgba(124,111,255,.2);color:#a79dff;border:1px solid rgba(124,111,255,.4)}
