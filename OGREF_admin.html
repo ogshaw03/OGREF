@@ -233,7 +233,7 @@ const provider = new GoogleAuthProvider();
 let currentUser=null;
 let env='dev';
 let isOperator=false;
-let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null, unsubInv=null, unsubLU=null;
+let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null, unsubReq=null, unsubInv=null, unsubLUdev=null, unsubLUprod=null;
 let nameByEmail={};
 
 const $=id=>document.getElementById(id);
@@ -248,11 +248,16 @@ function uiConfirm(msg){ const w=(accessWin&&!accessWin.closed)?accessWin:window
 function acCol(){return env==='prod'?'access_control':'dev_access_control';}
 function configRef(){return doc(db,acCol(),'config');}
 function maintRef(){return doc(db,acCol(),'maintenance');}
-function luRef(){return doc(db,acCol(),'loggedUsers');}
-// loggedUsers(uid->{email,displayName}) から email→表示名 の対応を作る
-function buildNameMap(users){
+// 表示名の収集: dev/本番 両方の loggedUsers ＋ 申請の名前 ＋ 自分 を email→表示名 にまとめる
+// （人の表示名は環境に依存しないため両環境を統合。コンソールだけ使う運営やBetaのみ利用者も拾える）
+let luDevUsers={}, luProdUsers={}, reqNames={};
+function rebuildNames(){
   nameByEmail={};
-  Object.values(users||{}).forEach(u=>{ if(u&&u.email&&u.displayName){ nameByEmail[String(u.email).toLowerCase()]=u.displayName; } });
+  const add=(email,name)=>{ if(email&&name){ const k=String(email).toLowerCase(); if(!nameByEmail[k])nameByEmail[k]=name; } };
+  Object.values(luDevUsers).forEach(u=>u&&add(u.email,u.displayName));
+  Object.values(luProdUsers).forEach(u=>u&&add(u.email,u.displayName));
+  Object.entries(reqNames).forEach(([e,n])=>add(e,n));
+  if(currentUser&&currentUser.email&&currentUser.displayName)add(currentUser.email,currentUser.displayName);
 }
 function nameOf(email){ return nameByEmail[String(email||'').toLowerCase()]||''; }
 function bcastRef(){return doc(db,acCol(),'broadcast');}
@@ -285,7 +290,7 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} if(unsubInv){unsubInv();unsubInv=null} if(unsubLU){unsubLU();unsubLU=null} nameByEmail={}; }
+function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} if(unsubReq){unsubReq();unsubReq=null} if(unsubInv){unsubInv();unsubInv=null} if(unsubLUdev){unsubLUdev();unsubLUdev=null} if(unsubLUprod){unsubLUprod();unsubLUprod=null} nameByEmail={};luDevUsers={};luProdUsers={};reqNames={}; }
 
 $('envSwitch').querySelectorAll('button').forEach(b=>{
   b.onclick=async()=>{
@@ -329,13 +334,17 @@ function subscribeAll(){
   unsubFb=onSnapshot(query(collection(db,fbCol()),orderBy('createdAt','desc')), snap=>renderFbAdmin(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
   unsubReq=onSnapshot(collection(db,areqCol()), snap=>renderAccessRequests(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
   unsubInv=onSnapshot(collection(db,invCol()), snap=>renderInvites(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
-  unsubLU=onSnapshot(luRef(), snap=>{ buildNameMap(snap.exists()?(snap.data().users||{}):{}); paintAccess(); }, err=>{});
+  unsubLUdev=onSnapshot(doc(db,'dev_access_control','loggedUsers'), snap=>{ luDevUsers=snap.exists()?(snap.data().users||{}):{}; rebuildNames(); paintAccess(); }, err=>{});
+  unsubLUprod=onSnapshot(doc(db,'access_control','loggedUsers'), snap=>{ luProdUsers=snap.exists()?(snap.data().users||{}):{}; rebuildNames(); paintAccess(); }, err=>{});
 }
 
 // ── アクセス権の申請（承認＝メンバー追加 / 却下） ──
 let lastReqs=[];
 function renderAccessRequests(items){
   lastReqs=items||[];
+  // 申請の名前も表示名ソースに取り込む（本体未ログインの承認者などを補完）
+  reqNames={}; lastReqs.forEach(r=>{ if(r&&r.email&&r.name)reqNames[String(r.email).toLowerCase()]=r.name; });
+  rebuildNames(); paintAccess();
   const pending=lastReqs.filter(r=>(r.status||'pending')==='pending');
   const badge=$('reqBadge');
   if(badge){ if(pending.length){badge.style.display='';badge.textContent=pending.length+'件';}else badge.style.display='none'; }
