@@ -661,6 +661,12 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 </style></head><body>
 <div class="aw-head"><span class="aw-title">🔐 アクセス権管理</span><span class="aw-env dev" id="awEnv"></span></div>
 <div class="aw-counts" id="awCounts"></div>
+<label class="field-label">ユーザーを追加（メールアドレス）</label>
+<div class="add-row">
+  <input id="awEmail" type="email" placeholder="user@example.com" autocomplete="off">
+  <select id="awRole"><option value="member">メンバー</option><option value="admin">管理者</option><option value="operator">運営</option></select>
+  <button class="btn btn-primary" id="awAddBtn">追加</button>
+</div>
 <div class="aw-search"><input id="awSearch" type="text" placeholder="メールアドレスで検索…" autocomplete="off"></div>
 <div class="sub-label">運営ユーザー（権限付与・メンテ制御・コンソール可）</div>
 <div class="u-list" id="opList"></div>
@@ -668,12 +674,6 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 <div class="u-list" id="adminList"></div>
 <div class="sub-label">メンバー（利用のみ）</div>
 <div class="u-list" id="memberList"></div>
-<label class="field-label">ユーザーを追加（メールアドレス）</label>
-<div class="add-row">
-  <input id="awEmail" type="email" placeholder="user@example.com" autocomplete="off">
-  <select id="awRole"><option value="member">メンバー</option><option value="admin">管理者</option><option value="operator">運営</option></select>
-  <button class="btn btn-primary" id="awAddBtn">追加</button>
-</div>
 <div class="aw-note" id="awNote"></div>
 </body></html>`;
 async function readConfig(){const snap=await getDoc(configRef());return snap.exists()?snap.data():{};}
