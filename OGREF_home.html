@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OGREF — 動画リファレンスを、一枚の壁に。</title>
-<meta name="description" content="OGREF はアニメーション制作のための動画リファレンス管理ツール。YouTube・Vimeo・X・TikTok・Google Drive の埋め込みも、端末の動画も、一枚の壁に並べて自動再生。">
+<title>OGREF — チームで育てる、動画リファレンス・ライブラリ</title>
+<meta name="description" content="OGREF はチームで共同構築する動画リファレンス・ライブラリ。YouTube・Vimeo・X・TikTok・Google Drive の埋め込みも端末の動画も、みんなで集めてリアルタイム共有。壁のように並べて自動再生。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -144,6 +144,45 @@ section{position:relative; z-index:1}
 .sec-head h2{font-family:var(--display); font-weight:800; font-size:clamp(28px,4.4vw,46px); line-height:1.1; letter-spacing:-.015em; margin-bottom:16px}
 .sec-head p{color:var(--muted); font-size:17px}
 
+/* ---- collaboration section ---- */
+.collab{display:grid; grid-template-columns:1.05fr .95fr; gap:44px; align-items:center;
+  border:1px solid var(--line); border-radius:24px; padding:44px; background:linear-gradient(135deg,#161230,#0f1219); position:relative; overflow:hidden}
+.collab::before{content:""; position:absolute; width:420px;height:420px; border-radius:50%; filter:blur(120px); background:#7c6fff33; top:-160px; right:-120px; pointer-events:none}
+.collab-copy h2{font-family:var(--display); font-weight:800; font-size:clamp(26px,3.6vw,40px); line-height:1.12; letter-spacing:-.015em; margin:12px 0 16px}
+.collab-copy>p{color:var(--muted); font-size:16px; margin-bottom:22px}
+.collab-list{list-style:none; display:flex; flex-direction:column; gap:14px}
+.collab-list li{display:flex; gap:12px; align-items:flex-start; font-size:15px; color:var(--muted)}
+.collab-list li b{color:var(--text)}
+.collab-list .ck{width:30px;height:30px;flex:0 0 auto; border-radius:9px; display:grid; place-items:center; background:#7c6fff1a; border:1px solid #7c6fff33; font-size:15px}
+/* activity card */
+.collab-card{background:#0c0e15; border:1px solid var(--line2); border-radius:18px; padding:18px; box-shadow:0 30px 70px -30px #000; position:relative; z-index:1}
+.cc-top{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+.cc-ws{font-family:var(--display); font-weight:700; font-size:15px}
+.cc-live{margin-left:auto; display:flex; align-items:center; gap:7px; font-size:12px; color:var(--green); font-family:var(--mono)}
+.cc-live .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s infinite}
+.cc-avatars{display:flex; align-items:center; margin-bottom:16px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;border:2px solid #0c0e15; margin-left:-8px}
+.av:first-child{margin-left:0}
+.av.more{background:#252a3a;color:var(--muted);font-size:11px}
+.av.sm{width:26px;height:26px;font-size:11px;border:none;margin:0}
+.cc-feed{display:flex; flex-direction:column; gap:10px}
+.cc-item{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); background:#ffffff06; border:1px solid #ffffff0d; border-radius:11px; padding:9px 12px}
+.cc-item b{color:var(--text); font-weight:700}
+.cc-item .t{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--faint)}
+@media(max-width:820px){ .collab{grid-template-columns:1fr; padding:30px} }
+/* team feature points + real screenshots */
+.collab-feats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:40px 0}
+.cf{border:1px solid var(--line); border-radius:14px; padding:18px; background:linear-gradient(180deg,#14171f,#0f1219); display:flex; flex-direction:column; gap:5px}
+.cf .ck{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#7c6fff1a;border:1px solid #7c6fff33;font-size:17px;margin-bottom:6px}
+.cf b{font-size:15px}
+.cf span{font-size:13px;color:var(--muted)}
+.collab-shots{display:grid; grid-template-columns:1fr 1fr; gap:26px; align-items:start}
+.shot{margin:0}
+.shot img{width:100%;height:auto;border-radius:16px;border:1px solid var(--line2);box-shadow:0 34px 80px -34px #000;display:block;background:#0c0e15}
+.shot figcaption{text-align:center;color:var(--muted);font-size:14px;margin-top:14px;font-weight:500}
+@media(max-width:820px){ .collab-feats{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:640px){ .collab-shots{grid-template-columns:1fr} .collab-feats{grid-template-columns:1fr} }
+
 /* ---- bento ---- */
 .bento{display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:minmax(180px,auto); gap:16px}
 .card{background:linear-gradient(180deg,#14171f,#0f1219); border:1px solid var(--line); border-radius:18px; padding:24px; position:relative; overflow:hidden; transition:.25s}
@@ -235,6 +274,7 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
       OGREF
     </a>
     <div class="nav-links">
+      <a href="#team">共同構築</a>
       <a href="#features">機能</a>
       <a href="#how">使い方</a>
       <a href="#pricing">プラン</a>
@@ -249,9 +289,9 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 <!-- ================= HERO ================= -->
 <header class="hero" id="top">
   <div class="wrap">
-    <div class="eyebrow rise d1"><span class="dot"></span>アニメーション制作のためのリファレンス管理</div>
-    <h1 class="rise d2">動画リファレンスを、<br><span class="accent">一枚の壁</span>に。</h1>
-    <p class="lead rise d3">YouTube・Vimeo・X・TikTok・Google Drive の埋め込みも、端末の動画も。集めて、並べて、<b style="color:#dfe3ee">タイルのまま自動再生</b>。動きを一望できる、あなたのリファレンスボード。</p>
+    <div class="eyebrow rise d1"><span class="dot"></span>チームで共同構築する 動画リファレンス・ライブラリ</div>
+    <h1 class="rise d2">チームで育てる、<br><span class="accent">動画リファレンス</span>のライブラリ。</h1>
+    <p class="lead rise d3">YouTube・Vimeo・X・TikTok・Google Drive も、端末の動画も。<b style="color:#dfe3ee">チーム全員で集めて育てる</b>共有ライブラリ。追加も整理もその場で全員に反映され、タイルのまま自動再生で一望できます。</p>
     <div class="hero-cta rise d4">
       <a class="btn btn-primary btn-lg" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">▶ 無料ではじめる</a>
       <a class="btn btn-ghost btn-lg" href="#features">機能を見る</a>
@@ -286,13 +326,40 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
   </div>
 </section>
 
+<!-- ================= TEAM / COLLABORATION ================= -->
+<section class="sec" id="team" style="padding-bottom:40px">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Team library</div>
+      <h2>ひとつのライブラリを、<span class="accent">チーム全員で</span>育てる。</h2>
+      <p>誰かが追加した参考動画は、その瞬間に全員の画面へ。フォルダもタグも共有。リファレンス集めを個人作業から<b style="color:#dfe3ee">チームの資産</b>に変えます。</p>
+    </div>
+    <div class="collab-feats">
+      <div class="cf"><span class="ck">⚡</span><b>リアルタイム反映</b><span>追加・移動・削除がその場で全員に同期</span></div>
+      <div class="cf"><span class="ck">🔗</span><b>招待コード / リンク</b><span>ワンクリックでメンバー参加。承認不要リンクも</span></div>
+      <div class="cf"><span class="ck">🛡️</span><b>権限管理</b><span>運営 / 管理者 / メンバーの3区分で制御</span></div>
+      <div class="cf"><span class="ck">🗂️</span><b>共有ワークスペース</b><span>案件ごとに分けて、チームで整理</span></div>
+    </div>
+    <div class="collab-shots">
+      <figure class="shot">
+        <img src="assets/ogref-members.png" alt="OGREF 参加者一覧：チームメンバーと役割・編集許可" loading="lazy">
+        <figcaption>👥 参加者と権限をひと目で管理</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/ogref-share.png" alt="OGREF 招待コード共有：ワークスペースへの招待と編集権限設定" loading="lazy">
+        <figcaption>🔗 招待コードでチームに共有</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <!-- ================= FEATURES (bento) ================= -->
 <section class="sec" id="features">
   <div class="wrap">
     <div class="sec-head">
       <div class="kicker">Features</div>
-      <h2>集める・並べる・動かす。<br>リファレンス作業の全部を、一枚で。</h2>
-      <p>散らばったタブとブックマークにさよなら。OGREF は「動きを見比べる」ためだけに設計されたリファレンスボードです。</p>
+      <h2>集める・並べる・動かす。<br>チームのリファレンスを、ひとつに。</h2>
+      <p>散らばったタブとブックマークにさよなら。OGREF は<b style="color:#dfe3ee">チームで動画リファレンスを共同構築する</b>ために設計されたライブラリです。</p>
     </div>
     <div class="bento">
       <div class="card big">
@@ -450,8 +517,8 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 <section class="final">
   <div class="wrap">
     <div class="final-card">
-      <h2>動きを、見比べよう。</h2>
-      <p>あなたのリファレンスを、一枚の壁に。今すぐ無料で。</p>
+      <h2>リファレンスを、チームの資産に。</h2>
+      <p>みんなで集めて、みんなで見比べる。共有ライブラリを、今すぐ無料で。</p>
       <a class="btn btn-primary btn-lg" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">▶ OGREF を開く</a>
     </div>
   </div>
