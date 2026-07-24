@@ -924,9 +924,19 @@ body.no-perm .m-menu-item.gated{display:none!important}
 <div id="notification" style="display:none" class="notification"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+// Firebase SDK は動的importで読み込む。?mock=1（モック）時は一切読み込まないため、
+// オフラインやCDNブロック環境でもボードUIを起動できる（スクショ生成用）。通常時は initApp() で読み込む。
+let initializeApp;
+let getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where;
+let getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged;
+async function _loadFirebase(){
+  const A  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+  const F  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  const Au = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+  initializeApp = A.initializeApp;
+  ({ getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } = F);
+  ({ getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = Au);
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE",
@@ -937,10 +947,10 @@ const firebaseConfig = {
   appId: "1:1029274074603:web:f0ddc3eb69e35a47276dae"
 };
 
-const app = initializeApp(firebaseConfig);
+// Firebase の各インスタンスは initApp()（動的import後）で代入する。
 // オフライン永続キャッシュ(IndexedDB)を有効化。リロード時はキャッシュから表示し、
 // サーバーへは差分のみ取得 → 全件読み直しによる読み取りコストを大幅削減（複数タブ対応）。
-const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+let app, db, auth, provider, ACCESS_DOC;
 // ===== 開発環境フラグ =====
 // true: 本番(workspaces等)とは別の dev_ コレクションを使用（本番データに影響しない）
 const DEV_MODE=true;
@@ -1023,8 +1033,7 @@ async function handleR2FileSelected(file){
     notify('アップロード完了: '+title);
   }catch(err){ notify('アップロード失敗: '+((err&&err.message)||err)); }
 }
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+// auth / provider は initApp() で代入
 
 const COLORS=['purple','blue','green','amber','red','pink','gray'];
 const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a',red:'#ff5a5a',pink:'#ff5aaa',gray:'#5a5a6a'};
@@ -1077,8 +1086,7 @@ let wsAddPermission='all';   // 'all' | 'allowed' | 'owner'
 let myCanAdd=false;          // 'allowed' モード時、自分が追加を許可されているか
 
 // ── Auth State ──
-onAuthStateChanged(auth, async user=>{
-  if(MOCK)return;   // モックモードは bootstrapMock() が起動を担うため実認証フローを止める
+const AUTH_HANDLER = async user=>{   // initApp() で onAuthStateChanged に登録（mock時は未登録）
   document.getElementById('loadingOverlay').classList.add('hidden');
   if(user){
     currentUser=user;
@@ -1151,7 +1159,7 @@ onAuthStateChanged(auth, async user=>{
     document.getElementById('wsScreen').classList.add('hidden');
     document.getElementById('deniedScreen').classList.add('hidden');
   }
-});
+};
 
 window.loginWithGoogle=async function(){
   try{
@@ -1172,7 +1180,7 @@ window.logoutUser=async function(){
 
 // ── Access Control ──
 // Firestore: access_control/config -> { adminEmail, allowedEmails:[] }
-const ACCESS_DOC=doc(db,C_AC,'config');
+// ACCESS_DOC は initApp() で doc(db,C_AC,'config') を代入
 
 async function checkAccess(user){
   try{
@@ -4498,9 +4506,24 @@ function bootstrapMock(){
     thumb:_mkThumb
   };
 }
+// 通常起動: Firebaseを動的ロードしてから初期化（トップレベルのFirebase初期化と同順序を維持）
+async function initApp(){
+  await _loadFirebase();
+  app = initializeApp(firebaseConfig);
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  auth = getAuth(app);
+  provider = new GoogleAuthProvider();
+  ACCESS_DOC = doc(db, C_AC, 'config');
+  onAuthStateChanged(auth, AUTH_HANDLER);
+}
 if(MOCK){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootstrapMock);
   else bootstrapMock();
+}else{
+  initApp().catch(e=>{
+    const o=document.getElementById('loadingOverlay'); if(o)o.classList.add('hidden');
+    try{ notify('初期化に失敗しました: '+((e&&e.message)||e)); }catch(_){ alert('初期化に失敗しました: '+((e&&e.message)||e)); }
+  });
 }
 </script>
 </body>
