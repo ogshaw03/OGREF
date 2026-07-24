@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OGREF — 動画リファレンスを、一枚の壁に。</title>
+<meta name="description" content="OGREF はアニメーション制作のための動画リファレンス管理ツール。YouTube・Vimeo・X・TikTok・Google Drive の埋め込みも、端末の動画も、一枚の壁に並べて自動再生。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0b0f; --bg2:#0e1015; --panel:#14171f; --panel2:#1b1f2b; --line:#242a38; --line2:#333b4e;
+  --text:#eef0f6; --muted:#9aa2b4; --faint:#6a7183;
+  --violet:#7c6fff; --violet-2:#9a8cff; --blue:#5a8fff; --green:#5affa0; --amber:#ffb85a; --pink:#ff5aaa; --red:#ff5a5a;
+  --display:'Bricolage Grotesque','Zen Kaku Gothic New',sans-serif;
+  --body:'Zen Kaku Gothic New',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --maxw:1200px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--body); background:var(--bg); color:var(--text);
+  line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+/* ---- atmosphere: grain + glow ---- */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.glow{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
+.glow::before,.glow::after{content:""; position:absolute; border-radius:50%; filter:blur(120px); opacity:.5}
+.glow::before{width:640px;height:640px; top:-220px; left:-120px; background:radial-gradient(circle,#5a3cff55,transparent 70%)}
+.glow::after{width:560px;height:560px; top:120px; right:-160px; background:radial-gradient(circle,#2f6bff44,transparent 70%)}
+a{color:inherit;text-decoration:none}
+img,svg{display:block}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px; position:relative; z-index:1}
+
+/* ---- nav ---- */
+nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
+  background:linear-gradient(180deg,#0a0b0fee,#0a0b0fbb); border-bottom:1px solid #ffffff0d}
+.nav-in{max-width:var(--maxw); margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:22px}
+.brand{display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:20px; letter-spacing:.5px}
+.mark{width:30px;height:30px;flex:0 0 auto}
+.nav-links{display:flex; gap:26px; margin-left:14px; font-size:14px; color:var(--muted)}
+.nav-links a{transition:.2s} .nav-links a:hover{color:var(--text)}
+.nav-cta{margin-left:auto; display:flex; gap:10px; align-items:center}
+.btn{font-family:var(--body); font-weight:700; font-size:14px; border-radius:11px; padding:10px 18px; cursor:pointer; border:1px solid transparent; transition:.2s; display:inline-flex; align-items:center; gap:8px; white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--violet),#6a5cff); color:#fff; box-shadow:0 8px 24px -8px #7c6fffcc}
+.btn-primary:hover{transform:translateY(-2px); box-shadow:0 14px 30px -8px #7c6fffcc}
+.btn-ghost{background:#ffffff08; border-color:#ffffff1a; color:var(--text)}
+.btn-ghost:hover{background:#ffffff12; border-color:#ffffff33}
+.nav-links,.nav-cta .btn-ghost{ }
+@media(max-width:820px){ .nav-links{display:none} }
+
+/* ---- hero ---- */
+.hero{padding:70px 0 40px; text-align:center; position:relative}
+.eyebrow{display:inline-flex; align-items:center; gap:9px; font-family:var(--mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--violet-2); border:1px solid #7c6fff44; background:#7c6fff12; padding:7px 14px; border-radius:999px; margin-bottom:26px}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse 2s infinite}
+h1{font-family:var(--display); font-weight:800; line-height:1.04; letter-spacing:-.02em;
+  font-size:clamp(38px,7vw,80px); margin-bottom:22px}
+h1 .accent{background:linear-gradient(120deg,var(--violet-2),var(--blue) 60%,var(--green)); -webkit-background-clip:text; background-clip:text; color:transparent}
+.lead{max-width:640px; margin:0 auto 34px; font-size:clamp(16px,2vw,19px); color:var(--muted)}
+.hero-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:16px}
+.btn-lg{padding:15px 28px; font-size:16px; border-radius:13px}
+.hero-note{font-size:13px; color:var(--faint); font-family:var(--mono)}
+
+/* ---- staggered reveal ---- */
+.rise{opacity:0; transform:translateY(22px); animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rise{to{opacity:1; transform:none}}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.5s}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---- browser window mockup ---- */
+.window{max-width:1060px; margin:48px auto 0; border-radius:18px; overflow:hidden;
+  border:1px solid var(--line2); background:var(--bg2);
+  box-shadow:0 50px 120px -40px #000, 0 0 0 1px #ffffff08, 0 0 90px -30px #7c6fff44}
+.win-bar{display:flex; align-items:center; gap:8px; padding:12px 16px; background:#0d0f16; border-bottom:1px solid var(--line)}
+.win-dots{display:flex; gap:7px}
+.win-dots i{width:12px;height:12px;border-radius:50%;display:block}
+.win-dots i:nth-child(1){background:#ff5f57}.win-dots i:nth-child(2){background:#febc2e}.win-dots i:nth-child(3){background:#28c840}
+.win-url{margin:0 auto; font-family:var(--mono); font-size:12px; color:var(--faint); background:#ffffff08; padding:5px 16px; border-radius:8px; border:1px solid #ffffff10}
+/* app board */
+.board{display:grid; grid-template-columns:196px 1fr; min-height:440px; background:var(--bg2)}
+.b-side{border-right:1px solid var(--line); padding:16px 12px; background:#101219}
+.b-side .s-lab{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin:14px 8px 8px; font-family:var(--mono)}
+.b-side .s-lab:first-child{margin-top:0}
+.nav-item{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--muted); padding:8px 10px; border-radius:9px; transition:.15s}
+.nav-item .ni-ic{width:16px;text-align:center}
+.nav-item .cnt{margin-left:auto; font-size:11px; color:var(--faint); background:#ffffff0d; border-radius:6px; padding:1px 7px; font-family:var(--mono)}
+.nav-item.active{background:linear-gradient(90deg,#7c6fff22,#7c6fff08); color:#fff; box-shadow:inset 2px 0 0 var(--violet)}
+.nav-item:hover{background:#ffffff08; color:#fff}
+.b-main{padding:16px}
+.b-top{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+.b-top .ws{font-family:var(--display); font-weight:700; font-size:15px}
+.b-top .chip{font-size:11px; color:var(--muted); border:1px solid var(--line2); border-radius:999px; padding:3px 11px}
+.b-top .up{margin-left:auto; font-size:12px; color:#cdd3e2; background:#ffffff0c; border:1px solid #ffffff18; border-radius:9px; padding:6px 12px}
+.grid{display:grid; grid-template-columns:repeat(4,1fr); gap:11px}
+@media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+.tile{position:relative; aspect-ratio:16/10; border-radius:11px; overflow:hidden; border:1px solid #ffffff12;
+  box-shadow:0 6px 20px -10px #000}
+.tile .badge{position:absolute; top:7px; left:7px; z-index:3; font-size:9.5px; font-weight:700; letter-spacing:.03em;
+  padding:2px 7px; border-radius:6px; color:#fff; backdrop-filter:blur(4px); background:#0009; display:flex; align-items:center; gap:4px}
+.tile .live{position:absolute; top:7px; right:7px; z-index:3; width:8px;height:8px;border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.8s infinite}
+.tile .mo{position:absolute; inset:0; z-index:2; opacity:.5}
+/* animated sheen to imply autoplay */
+.tile.playing::after{content:""; position:absolute; inset:0; z-index:2;
+  background:linear-gradient(115deg,transparent 30%,#ffffff26 48%,transparent 62%); transform:translateX(-120%);
+  animation:sheen 3.4s ease-in-out infinite}
+@keyframes sheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
+/* tile gradient palettes */
+.g1{background:radial-gradient(120% 120% at 20% 10%,#3a2b7a,#141026),linear-gradient(135deg,#6a4bff,#221a44)}
+.g2{background:radial-gradient(120% 120% at 80% 20%,#0e5b6b,#0a1a24),linear-gradient(135deg,#12b3c8,#0a2230)}
+.g3{background:radial-gradient(120% 120% at 30% 80%,#7a2b52,#1a0f1a),linear-gradient(135deg,#ff5aaa,#3a1030)}
+.g4{background:radial-gradient(120% 120% at 70% 30%,#245a2f,#0d1a12),linear-gradient(135deg,#2fbf6a,#0e2418)}
+.g5{background:radial-gradient(120% 120% at 40% 20%,#5a4210,#1a1408),linear-gradient(135deg,#ffb85a,#3a2a0e)}
+.g6{background:radial-gradient(120% 120% at 60% 70%,#2b3f7a,#0c1224),linear-gradient(135deg,#5a8fff,#141d38)}
+.g7{background:radial-gradient(120% 120% at 25% 30%,#4a2b7a,#140d24),linear-gradient(135deg,#9a6bff,#241640)}
+.g8{background:radial-gradient(120% 120% at 75% 75%,#1f4a4a,#0a1818),linear-gradient(135deg,#3ad0c0,#0e2422)}
+
+/* platform badge colors */
+.p-yt{background:#e02f2f}.p-vm{background:#1aa7c8}.p-x{background:#111}.p-tt{background:#111}
+.p-gd{background:#2a7de1}.p-loc{background:#2a9d5c}.p-r2{background:#5a8fff}.p-ig{background:linear-gradient(135deg,#fa7e1e,#d62976)}
+
+/* motion silhouette */
+.mo svg{width:100%;height:100%}
+
+/* ---- platform strip ---- */
+.strip{padding:44px 0 12px; text-align:center}
+.strip .cap{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); margin-bottom:22px}
+.plats{display:flex; flex-wrap:wrap; gap:12px 26px; justify-content:center; align-items:center}
+.plat{display:flex; align-items:center; gap:9px; color:var(--muted); font-weight:500; font-size:15px; opacity:.85; transition:.2s}
+.plat:hover{opacity:1; color:var(--text)}
+.plat .pic{width:26px;height:26px;border-radius:7px; display:grid; place-items:center; font-size:13px; color:#fff; font-weight:800}
+
+/* ---- section shells ---- */
+section{position:relative; z-index:1}
+.sec{padding:90px 0}
+.sec-head{text-align:center; max-width:720px; margin:0 auto 54px}
+.kicker{font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--violet-2); margin-bottom:14px}
+.sec-head h2{font-family:var(--display); font-weight:800; font-size:clamp(28px,4.4vw,46px); line-height:1.1; letter-spacing:-.015em; margin-bottom:16px}
+.sec-head p{color:var(--muted); font-size:17px}
+
+/* ---- bento ---- */
+.bento{display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:minmax(180px,auto); gap:16px}
+.card{background:linear-gradient(180deg,#14171f,#0f1219); border:1px solid var(--line); border-radius:18px; padding:24px; position:relative; overflow:hidden; transition:.25s}
+.card:hover{border-color:#7c6fff55; transform:translateY(-3px); box-shadow:0 24px 50px -24px #7c6fff33}
+.card .ico{width:42px;height:42px;border-radius:12px; display:grid; place-items:center; font-size:20px; margin-bottom:16px;
+  background:#7c6fff18; border:1px solid #7c6fff33}
+.card h3{font-family:var(--display); font-weight:700; font-size:19px; margin-bottom:8px}
+.card p{color:var(--muted); font-size:14.5px}
+.card.big{grid-column:span 4; grid-row:span 2}
+.card.mid{grid-column:span 2}
+.card.wide{grid-column:span 3}
+@media(max-width:900px){ .bento{grid-template-columns:repeat(2,1fr)} .card.big,.card.mid,.card.wide{grid-column:span 2; grid-row:auto} }
+@media(max-width:560px){ .bento{grid-template-columns:1fr} .card.big,.card.mid,.card.wide{grid-column:span 1} }
+
+/* mini autoplay wall inside big card */
+.mini-wall{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:20px}
+.mini-wall .tile{border-radius:8px}
+@media(max-width:560px){.mini-wall{grid-template-columns:repeat(3,1fr)}}
+
+/* compare mock */
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:18px}
+.compare .pane{aspect-ratio:16/10; border-radius:9px; position:relative; overflow:hidden; border:1px solid #ffffff12}
+.compare .pane .tag{position:absolute; bottom:7px; left:7px; font-size:10px; color:#fff; background:#0009; padding:2px 8px; border-radius:6px}
+
+/* ---- canvas section ---- */
+.canvas-wrap{border:1px solid var(--line2); border-radius:20px; overflow:hidden; position:relative; height:440px;
+  background:radial-gradient(1200px 500px at 50% -10%,#1a1636,#0b0c11); box-shadow:0 40px 90px -40px #000}
+.canvas-dots{position:absolute; inset:0; background-image:radial-gradient(#ffffff14 1px,transparent 1px); background-size:26px 26px; opacity:.5}
+.c-tile{position:absolute; border-radius:12px; overflow:hidden; border:1px solid #ffffff1a; box-shadow:0 18px 40px -18px #000; transition:.3s}
+.c-tile:hover{transform:scale(1.03) rotate(0deg)!important; z-index:9; border-color:#7c6fff88}
+.c-tile .badge{position:absolute;top:6px;left:6px;font-size:9px;padding:2px 6px;border-radius:5px;color:#fff;background:#0009}
+
+/* ---- how it works ---- */
+.steps{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.step{position:relative; padding:28px 24px; border:1px solid var(--line); border-radius:16px; background:#0f1219}
+.step .num{font-family:var(--display); font-weight:800; font-size:44px; line-height:1; color:transparent; -webkit-text-stroke:1.5px #7c6fff66; margin-bottom:14px}
+.step h4{font-family:var(--display); font-weight:700; font-size:18px; margin-bottom:6px}
+.step p{color:var(--muted); font-size:14.5px}
+
+/* ---- pricing ---- */
+.pricing{padding-top:0}
+.plan-tabs{display:flex; justify-content:center; gap:8px; margin-bottom:34px}
+.plan-tab{font-size:13px; color:var(--muted); border:1px solid var(--line2); padding:8px 18px; border-radius:999px; font-family:var(--mono)}
+.plans{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; max-width:1000px; margin:0 auto}
+@media(max-width:820px){.plans{grid-template-columns:1fr; max-width:420px}}
+.plan{border:1px solid var(--line); border-radius:18px; padding:28px 24px; background:#0f1219; position:relative; transition:.25s}
+.plan:hover{transform:translateY(-4px); border-color:#7c6fff55}
+.plan.feat{border-color:#7c6fff; background:linear-gradient(180deg,#161230,#0f1219); box-shadow:0 30px 70px -30px #7c6fff55}
+.plan .tag{position:absolute; top:-11px; left:24px; font-size:11px; font-weight:700; background:var(--violet); color:#fff; padding:3px 12px; border-radius:999px; font-family:var(--mono)}
+.plan .pn{font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px}
+.plan .price{font-family:var(--display); font-weight:800; font-size:40px; line-height:1; margin-bottom:4px}
+.plan .price small{font-size:15px; color:var(--faint); font-weight:400; font-family:var(--body)}
+.plan .sub{color:var(--faint); font-size:13px; margin-bottom:18px}
+.plan ul{list-style:none; display:flex; flex-direction:column; gap:10px; margin-bottom:22px}
+.plan li{font-size:14px; color:var(--muted); display:flex; gap:9px; align-items:flex-start}
+.plan li .ck{color:var(--green); flex:0 0 auto}
+.plan .btn{width:100%; justify-content:center}
+
+/* ---- final cta ---- */
+.final{text-align:center; padding:110px 0}
+.final h2{font-family:var(--display); font-weight:800; font-size:clamp(30px,5vw,56px); line-height:1.06; letter-spacing:-.02em; margin-bottom:20px}
+.final p{color:var(--muted); font-size:18px; margin-bottom:32px}
+.final-card{border:1px solid #7c6fff33; border-radius:24px; padding:70px 30px; background:radial-gradient(700px 300px at 50% 0%,#1a1636,#0c0d12); position:relative; overflow:hidden}
+
+/* ---- footer ---- */
+footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)}
+.foot{display:flex; flex-wrap:wrap; gap:24px; align-items:center; justify-content:space-between}
+.foot .brand{font-size:18px}
+.foot-links{display:flex; gap:22px; font-size:14px; color:var(--muted); flex-wrap:wrap}
+.foot-links a:hover{color:var(--text)}
+.foot small{font-size:12.5px; font-family:var(--mono)}
+.divider{height:1px; background:var(--line); margin:26px 0; opacity:.6}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<!-- ================= NAV ================= -->
+<nav>
+  <div class="nav-in">
+    <a class="brand" href="#top">
+      <svg class="mark" viewBox="0 0 32 32" fill="none">
+        <rect x="1.5" y="1.5" width="29" height="29" rx="9" stroke="url(#mg)" stroke-width="2"/>
+        <path d="M13 11.2v9.6l8-4.8-8-4.8Z" fill="url(#mg)"/>
+        <defs><linearGradient id="mg" x1="0" y1="0" x2="32" y2="32">
+          <stop stop-color="#9a8cff"/><stop offset="1" stop-color="#5a8fff"/></linearGradient></defs>
+      </svg>
+      OGREF
+    </a>
+    <div class="nav-links">
+      <a href="#features">機能</a>
+      <a href="#canvas">Canvas</a>
+      <a href="#how">使い方</a>
+      <a href="#pricing">プラン</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">ログイン</a>
+      <a class="btn btn-primary" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">無料ではじめる</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow rise d1"><span class="dot"></span>アニメーション制作のためのリファレンス管理</div>
+    <h1 class="rise d2">動画リファレンスを、<br><span class="accent">一枚の壁</span>に。</h1>
+    <p class="lead rise d3">YouTube・Vimeo・X・TikTok・Google Drive の埋め込みも、端末の動画も。集めて、並べて、<b style="color:#dfe3ee">タイルのまま自動再生</b>。動きを一望できる、あなたのリファレンスボード。</p>
+    <div class="hero-cta rise d4">
+      <a class="btn btn-primary btn-lg" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">▶ 無料ではじめる</a>
+      <a class="btn btn-ghost btn-lg" href="#features">機能を見る</a>
+    </div>
+    <div class="hero-note rise d4">クレジットカード不要・Googleアカウントですぐ開始</div>
+
+    <!-- ---- app window mockup (screenshot-style) ---- -->
+    <div class="window rise d5" aria-label="OGREF アプリ画面イメージ">
+      <div class="win-bar">
+        <div class="win-dots"><i></i><i></i><i></i></div>
+        <div class="win-url">ogshaw03.github.io/OGREF</div>
+      </div>
+      <div class="board">
+        <aside class="b-side">
+          <div class="s-lab">ライブラリ</div>
+          <div class="nav-item active"><span class="ni-ic">🎞</span>すべて<span class="cnt">128</span></div>
+          <div class="nav-item"><span class="ni-ic">⭐</span>お気に入り<span class="cnt">24</span></div>
+          <div class="s-lab">プラットフォーム</div>
+          <div class="nav-item"><span class="ni-ic">▶️</span>YouTube<span class="cnt">61</span></div>
+          <div class="nav-item"><span class="ni-ic">🎬</span>Vimeo<span class="cnt">18</span></div>
+          <div class="nav-item"><span class="ni-ic">🎵</span>TikTok<span class="cnt">12</span></div>
+          <div class="nav-item"><span class="ni-ic">💾</span>ローカル<span class="cnt">20</span></div>
+          <div class="nav-item"><span class="ni-ic">☁️</span>アップロード<span class="cnt">17</span></div>
+        </aside>
+        <main class="b-main">
+          <div class="b-top">
+            <span class="ws">🎯 走り・アクション</span>
+            <span class="chip">フォルダ 6</span>
+            <span class="chip">タグ 14</span>
+            <span class="up">☁ アップロード</span>
+          </div>
+          <div class="grid">
+            <div class="tile g1 playing"><span class="badge p-yt">▶ YouTube</span><span class="live"></span><div class="mo">__RUN__</div></div>
+            <div class="tile g2 playing"><span class="badge p-vm">Vimeo</span><span class="live"></span><div class="mo">__JUMP__</div></div>
+            <div class="tile g6"><span class="badge p-r2">☁ アップ</span><div class="mo">__WALK__</div></div>
+            <div class="tile g3 playing"><span class="badge p-tt">TikTok</span><span class="live"></span><div class="mo">__SPIN__</div></div>
+            <div class="tile g4"><span class="badge p-loc">💾 ローカル</span><div class="mo">__RUN__</div></div>
+            <div class="tile g7 playing"><span class="badge p-yt">▶ YouTube</span><span class="live"></span><div class="mo">__JUMP__</div></div>
+            <div class="tile g5"><span class="badge p-gd">Drive</span><div class="mo">__WALK__</div></div>
+            <div class="tile g8 playing"><span class="badge p-x">X</span><span class="live"></span><div class="mo">__SPIN__</div></div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <p class="hero-note" style="margin-top:16px; opacity:.7">※ 画面はイメージです（実際の埋め込み・自動再生を再現）</p>
+  </div>
+</header>
+
+<!-- ================= PLATFORM STRIP ================= -->
+<section class="strip">
+  <div class="wrap">
+    <div class="cap">主要プラットフォームに対応 — リンクを貼るだけ</div>
+    <div class="plats">
+      <span class="plat"><span class="pic p-yt">▶</span>YouTube</span>
+      <span class="plat"><span class="pic p-vm">V</span>Vimeo</span>
+      <span class="plat"><span class="pic p-x">X</span>X (Twitter)</span>
+      <span class="plat"><span class="pic p-ig">◎</span>Instagram</span>
+      <span class="plat"><span class="pic p-tt">♪</span>TikTok</span>
+      <span class="plat"><span class="pic p-gd">▲</span>Google Drive</span>
+      <span class="plat"><span class="pic p-loc">💾</span>ローカル</span>
+      <span class="plat"><span class="pic p-r2">☁</span>クラウド</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES (bento) ================= -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Features</div>
+      <h2>集める・並べる・動かす。<br>リファレンス作業の全部を、一枚で。</h2>
+      <p>散らばったタブとブックマークにさよなら。OGREF は「動きを見比べる」ためだけに設計されたリファレンスボードです。</p>
+    </div>
+    <div class="bento">
+      <div class="card big">
+        <div class="ico">🧱</div>
+        <h3>タイルのまま、壁ごと自動再生</h3>
+        <p>スクロールで画面に入ったタイルがミュートで自動ループ。何十本もの動きを“同時に”一望。停止/再生や無操作での省通信も自動。</p>
+        <div class="mini-wall">
+          <div class="tile g1 playing" style="aspect-ratio:1/1"></div>
+          <div class="tile g6 playing" style="aspect-ratio:1/1"></div>
+          <div class="tile g4" style="aspect-ratio:1/1"></div>
+          <div class="tile g7 playing" style="aspect-ratio:1/1"></div>
+          <div class="tile g3" style="aspect-ratio:1/1"></div>
+          <div class="tile g8 playing" style="aspect-ratio:1/1"></div>
+          <div class="tile g2 playing" style="aspect-ratio:1/1"></div>
+          <div class="tile g5" style="aspect-ratio:1/1"></div>
+        </div>
+      </div>
+      <div class="card mid">
+        <div class="ico">🗂️</div>
+        <h3>ワークスペース / フォルダ / タグ</h3>
+        <p>案件ごとにワークスペース、テーマごとにフォルダ、横断検索はタグで。多階層フォルダにも対応。</p>
+      </div>
+      <div class="card mid">
+        <div class="ico">☁️</div>
+        <h3>端末の動画もアップロード</h3>
+        <p>手元の .mp4 をそのままクラウド保存して共有。埋め込みリンクと同じ壁に並べて再生。</p>
+      </div>
+      <div class="card wide">
+        <div class="ico">⊞</div>
+        <h3>並べて比較</h3>
+        <p>2本を左右に並べて同時再生。タイミングや軌道をフレーム単位で見比べられます。</p>
+        <div class="compare">
+          <div class="pane g1 playing"><span class="tag">Ref A — 走り</span></div>
+          <div class="pane g6 playing"><span class="tag">Ref B — 走り（別案）</span></div>
+        </div>
+      </div>
+      <div class="card mid">
+        <div class="ico">🔗</div>
+        <h3>共有・観覧URL</h3>
+        <p>ワークスペースをメンバーと共有。閲覧専用の観覧URL（パスワード保護つき）も発行できます。</p>
+      </div>
+      <div class="card mid">
+        <div class="ico">⚡</div>
+        <h3>リアルタイム同期</h3>
+        <p>追加・移動・削除がその場で全員に反映。Googleアカウントでログイン、招待リンクで即参加。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CANVAS ================= -->
+<section class="sec" id="canvas" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Canvas mode</div>
+      <h2>PureRef風、自由配置キャンバス</h2>
+      <p>グリッドを飛び出して、無限キャンバスに自由にレイアウト。パン・ズーム・リサイズで、思考のままに動きを配置。</p>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas-dots"></div>
+      <div class="c-tile g1 playing" style="width:230px;height:140px; top:40px; left:60px; transform:rotate(-4deg)"><span class="badge p-yt">▶ YouTube</span></div>
+      <div class="c-tile g6 playing" style="width:180px;height:180px; top:180px; left:150px; transform:rotate(3deg)"><span class="badge p-r2">☁ アップ</span></div>
+      <div class="c-tile g3 playing" style="width:200px;height:130px; top:70px; left:360px; transform:rotate(2deg)"><span class="badge p-tt">TikTok</span></div>
+      <div class="c-tile g4" style="width:150px;height:150px; top:230px; left:420px; transform:rotate(-3deg)"><span class="badge p-loc">💾 ローカル</span></div>
+      <div class="c-tile g7 playing" style="width:240px;height:150px; top:110px; left:600px; transform:rotate(-2deg)"><span class="badge p-vm">Vimeo</span></div>
+      <div class="c-tile g8 playing" style="width:170px;height:170px; top:250px; left:690px; transform:rotate(4deg)"><span class="badge p-x">X</span></div>
+      <div class="c-tile g5" style="width:150px;height:100px; top:300px; left:280px; transform:rotate(2deg)"><span class="badge p-gd">Drive</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="sec" id="how" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">How it works</div>
+      <h2>3ステップで、あなたの壁が動きだす</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h4>Googleでログイン</h4>
+        <p>アカウント登録は不要。Googleアカウントで即開始。招待リンクからならワンクリックで参加。</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h4>リファレンスを追加</h4>
+        <p>動画URLを貼るか、端末の動画をアップロード。フォルダとタグで整理。</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h4>壁に並べて再生</h4>
+        <p>タイルが自動再生。並べて比較、Canvasで自由配置、チームで共有。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section class="sec pricing" id="pricing">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Pricing</div>
+      <h2>ワンコインから、チームまで</h2>
+      <p>リンクの埋め込みはずっと無制限。課金対象はクラウドにアップした動画の容量だけ。視聴は無制限です。</p>
+    </div>
+    <div class="plan-tabs"><span class="plan-tab" style="color:#fff;border-color:#7c6fff">個人向け</span><span class="plan-tab">企業向けは下にスクロール</span></div>
+    <div class="plans">
+      <div class="plan">
+        <div class="pn">Free</div>
+        <div class="price">¥0</div>
+        <div class="sub">まずは試す</div>
+        <ul>
+          <li><span class="ck">✓</span>リンク埋め込み 無制限</li>
+          <li><span class="ck">✓</span>ワークスペース 1</li>
+          <li><span class="ck">✓</span>アップロード 2GB</li>
+          <li><span class="ck">✓</span>自動再生・比較・共有</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">はじめる</a>
+      </div>
+      <div class="plan feat">
+        <span class="tag">人気</span>
+        <div class="pn">ワンコイン</div>
+        <div class="price">¥500<small>/月</small></div>
+        <div class="sub">個人クリエイター向け</div>
+        <ul>
+          <li><span class="ck">✓</span>リンク埋め込み 無制限</li>
+          <li><span class="ck">✓</span>アップロード 50GB</li>
+          <li><span class="ck">✓</span>視聴・帯域 無制限</li>
+          <li><span class="ck">✓</span>観覧URL・パスワード保護</li>
+        </ul>
+        <a class="btn btn-primary" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">ワンコインで始める</a>
+      </div>
+      <div class="plan">
+        <div class="pn">Plus</div>
+        <div class="price">¥1,000<small>/月</small></div>
+        <div class="sub">たっぷり保存したい人へ</div>
+        <ul>
+          <li><span class="ck">✓</span>ワンコインの全機能</li>
+          <li><span class="ck">✓</span>アップロード 100GB</li>
+          <li><span class="ck">✓</span>優先サポート</li>
+          <li><span class="ck">✓</span>高度な共有設定</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">Plusにする</a>
+      </div>
+    </div>
+
+    <div class="plans" style="margin-top:18px">
+      <div class="plan">
+        <div class="pn">Team · Small</div>
+        <div class="price">¥5,000<small>/月</small></div>
+        <div class="sub">5席 / 500GB プール</div>
+        <ul><li><span class="ck">✓</span>チーム共有ワークスペース</li><li><span class="ck">✓</span>メンバー管理・招待</li><li><span class="ck">✓</span>視聴 無制限</li></ul>
+        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
+      </div>
+      <div class="plan">
+        <div class="pn">Team · Standard</div>
+        <div class="price">¥5,000<small>〜</small></div>
+        <div class="sub">10席 / 1TB プール</div>
+        <ul><li><span class="ck">✓</span>席数×容量で柔軟に</li><li><span class="ck">✓</span>アクセス権の細かな管理</li><li><span class="ck">✓</span>運営コンソール</li></ul>
+        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
+      </div>
+      <div class="plan">
+        <div class="pn">Team · Large</div>
+        <div class="price">¥15,000<small>/月</small></div>
+        <div class="sub">30席 / 3TB プール</div>
+        <ul><li><span class="ck">✓</span>大人数の制作チーム向け</li><li><span class="ck">✓</span>組織単位のデータ分離</li><li><span class="ck">✓</span>優先サポート</li></ul>
+        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
+      </div>
+    </div>
+    <p class="hero-note" style="text-align:center; margin-top:22px; opacity:.7">※ 価格・容量は予定です。内容は変更される場合があります。</p>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="wrap">
+    <div class="final-card">
+      <h2>動きを、見比べよう。</h2>
+      <p>あなたのリファレンスを、一枚の壁に。今すぐ無料で。</p>
+      <a class="btn btn-primary btn-lg" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">▶ OGREF を開く</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <a class="brand" href="#top">
+        <svg class="mark" viewBox="0 0 32 32" fill="none">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" stroke="url(#mg2)" stroke-width="2"/>
+          <path d="M13 11.2v9.6l8-4.8-8-4.8Z" fill="url(#mg2)"/>
+          <defs><linearGradient id="mg2" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#9a8cff"/><stop offset="1" stop-color="#5a8fff"/></linearGradient></defs>
+        </svg>
+        OGREF
+      </a>
+      <div class="foot-links">
+        <a href="#features">機能</a>
+        <a href="#canvas">Canvas</a>
+        <a href="#pricing">プラン</a>
+        <a href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">アプリを開く</a>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <small>© 2026 OGREF — アニメーション制作のための動画リファレンス管理ツール</small>
+  </div>
+</footer>
+
+<script>
+// タイルに動き（速度線）のSVGを差し込む。プレースホルダ __POSE__ を軽量SVGへ置換。
+(function(){
+  const poses = {
+    RUN:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><g stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"><path d="M8 40c14-6 24-4 34-14M12 50c18-8 30-4 44-16M20 58c16-6 28-6 40-16"/></g><circle cx="70" cy="20" r="7" fill="#ffffff" opacity="0.5"/><path d="M62 30l14 4-6 16 8 6M70 34l-4 14" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/></svg>',
+    JUMP:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><circle cx="52" cy="16" r="7" fill="#ffffff" opacity="0.5"/><path d="M52 24c-6 6-6 14-2 18M52 24c8 4 12 2 16-2M50 42l-6 12M52 42l8 10" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/><g stroke="#ffffff" stroke-width="2" opacity="0.35"><path d="M20 54h60M28 60h44"/></g></svg>',
+    WALK:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><circle cx="50" cy="16" r="7" fill="#ffffff" opacity="0.45"/><path d="M50 24v16M50 40l-8 14M50 40l8 14M50 30l-10 4M50 30l10 6" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.45"/></svg>',
+    SPIN:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><g fill="none" stroke="#ffffff" opacity="0.4"><ellipse cx="50" cy="31" rx="34" ry="14" stroke-width="2"/><ellipse cx="50" cy="31" rx="22" ry="26" stroke-width="2"/></g><circle cx="50" cy="31" r="5" fill="#ffffff" opacity="0.55"/></svg>'
+  };
+  document.querySelectorAll('.mo').forEach(function(el){
+    var k=(el.textContent||'').replace(/_/g,'').trim();
+    el.innerHTML = poses[k] || '';
+  });
+})();
+</script>
+</body>
+</html>
