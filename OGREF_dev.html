@@ -577,6 +577,7 @@ body.no-perm .m-menu-item.gated{display:none!important}
       <div class="nav-item" data-plat="tt" onclick="setFilter('tt',this)"><span class="ni-icon">🎵</span>TikTok<span class="badge" id="badge-tt">0</span></div>
       <div class="nav-item" data-plat="local" onclick="setFilter('local',this)"><span class="ni-icon">💾</span>ローカル<span class="badge" id="badge-local">0</span></div>
       <div class="nav-item" data-plat="r2" onclick="setFilter('r2',this)"><span class="ni-icon">☁️</span>アップロード<span class="badge" id="badge-r2">0</span></div>
+      <div id="r2Usage" style="font-size:11px;color:var(--text3);padding:2px 12px 4px"></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">フォルダ</div>
@@ -964,12 +965,12 @@ async function r2SignView(key){
   _r2ViewCache[key]={url:d.url, exp:now+(((d.expiresIn||1800)-60)*1000)};   // 60秒の余裕
   return d.url;
 }
-async function r2Upload(file,onProgress){
+async function r2Upload(file,key,onProgress){
   if(!currentUser)throw new Error('未ログイン');
   const tok=await currentUser.getIdToken();
-  const res=await fetch(R2_WORKER+'/sign-upload',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({contentType:file.type||'video/mp4',size:file.size})});
+  const res=await fetch(R2_WORKER+'/sign-upload',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({contentType:file.type||'video/mp4',size:file.size,key})});
   if(!res.ok){let m='sign-upload '+res.status;try{const e=await res.json();if(e.error)m=e.error;}catch(_){}throw new Error(m);}
-  const {key,uploadUrl}=await res.json();
+  const {key:outKey,uploadUrl}=await res.json();
   await new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     xhr.open('PUT',uploadUrl);
@@ -979,8 +980,16 @@ async function r2Upload(file,onProgress){
     xhr.onerror=()=>reject(new Error('network'));
     xhr.send(file);
   });
-  return key;
+  return outKey;
 }
+async function r2DeleteObject(key){
+  if(!key||!currentUser)return;
+  try{
+    const tok=await currentUser.getIdToken();
+    await fetch(R2_WORKER+'/delete-object',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({key})});
+  }catch(_){}
+}
+function fmtBytes(b){ if(!b)return '0B'; const u=['B','KB','MB','GB','TB']; let i=0,n=b; while(n>=1024&&i<u.length-1){n/=1024;i++;} return (i>=2?(n>=100?Math.round(n):n.toFixed(1)):Math.round(n))+u[i]; }
 window.openR2Upload=function(){
   if(!currentWsId){notify('ワークスペースを開いてください');return;}
   const inp=document.getElementById('r2FileInput');
@@ -996,11 +1005,16 @@ async function handleR2FileSelected(file){
   if(file.size>R2_MAX_MB*1024*1024){notify(`ファイルが大きすぎます（上限 ${R2_MAX_MB}MB）`);return;}
   try{
     notify('アップロード中… 0%');
+    // 動画docのIDを先に採番し、R2キーをFirestore階層に合わせる: {C_WS}/{wsId}/videos/{videoId}.ext
+    const ref=doc(collection(db,C_WS,currentWsId,'videos'));
+    const videoId=ref.id;
+    const ext=(file.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
+    const key=`${C_WS}/${currentWsId}/videos/${videoId}.${ext}`;
     let last=-1;
-    const key=await r2Upload(file,p=>{const pct=Math.round(p*100);if(pct!==last){last=pct;notify('アップロード中… '+pct+'%');}});
+    const outKey=await r2Upload(file,key,p=>{const pct=Math.round(p*100);if(pct!==last){last=pct;notify('アップロード中… '+pct+'%');}});
     const title=file.name.replace(/\.[^.]+$/,'');
-    await addDoc(collection(db,C_WS,currentWsId,'videos'),{
-      url:'r2:'+key, r2Key:key, r2Size:file.size, vid:null, platform:'r2',
+    await setDoc(ref,{
+      url:'r2:'+outKey, r2Key:outKey, r2Size:file.size, vid:null, platform:'r2',
       title, tags:[], folder:null, thumb:null, startTime:0, endTime:0, fav:false,
       createdAt:Date.now(), addedBy:currentUser.uid, addedByName:currentUser.displayName||''
     });
@@ -2299,8 +2313,16 @@ window.saveVideo=async function(){
 window.deleteVideo=async function(id){
   if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
   if(!confirm('削除しますか？'))return;
-  try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',id));notify('削除しました')}
-  catch(e){notify('削除失敗')}
+  try{
+    const v=videos.find(x=>x.id===id);
+    await deleteDoc(doc(db,C_WS,currentWsId,'videos',id));
+    // R2アップロード動画は、同じキーを参照する他のdocが無ければ実体も削除（孤児防止）
+    if(v&&v.platform==='r2'&&v.r2Key){
+      const shared=videos.some(x=>x.id!==id&&x.r2Key===v.r2Key);
+      if(!shared)r2DeleteObject(v.r2Key);
+    }
+    notify('削除しました');
+  }catch(e){notify('削除失敗')}
 }
 window.toggleFav=async function(id){
   if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
@@ -3107,6 +3129,8 @@ function renderSidebar(){
     const el=document.getElementById('badge-'+p);
     if(el)el.textContent=displayVids.filter(v=>v.platform===p).length;
   });
+  { const r2v=videos.filter(v=>v.platform==='r2'); const ue=document.getElementById('r2Usage');
+    if(ue)ue.textContent=r2v.length?('☁ 使用容量 '+fmtBytes(r2v.reduce((s,v)=>s+(v.r2Size||0),0))+'（'+r2v.length+'本）'):''; }
   renderFolderTree();
   const tl=document.getElementById('tagList');
   tl.innerHTML='';
