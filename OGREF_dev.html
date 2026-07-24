@@ -548,6 +548,8 @@ body.no-perm .m-menu-item.gated{display:none!important}
       <button class="btn btn-ghost pc-only" onclick="openLocalFolder()" title="ローカルフォルダを開く（Chrome推奨）">💾 ローカル</button>
     <button class="btn btn-ghost pc-only" onclick="openMembersModal()" title="参加者一覧">👥 参加者</button>
     <button class="btn btn-ghost pc-only" onclick="openShareModal()">🔗 共有</button>
+    <button class="btn pc-only" id="uploadBtn" onclick="openR2Upload()" title="端末から動画をアップロード">☁ アップロード</button>
+    <input type="file" id="r2FileInput" accept="video/*" style="display:none" onchange="onR2FilePicked(event)">
     <button class="btn btn-primary pc-only" id="addBtn" onclick="openAddModal()">＋ 追加</button>
     <button class="btn btn-ghost m-only" onclick="openMobileMenu()" title="メニュー" style="font-size:18px;line-height:1;padding:7px 11px">⋮</button>
     <img id="headerAvatar" class="user-avatar" src="" onclick="showWsScreen()" title="アカウント">
@@ -946,6 +948,64 @@ const C_USERS=DEV_MODE?'dev_users':'users';
 const C_FB=DEV_MODE?'dev_feedback':'feedback';
 const C_AREQ=DEV_MODE?'dev_access_requests':'access_requests';   // アクセス権付与申請
 const C_INV=DEV_MODE?'dev_access_invites':'access_invites';      // 招待リンク（承認不要）
+// ===== R2（端末からの動画アップロード・署名URL方式）=====
+const R2_WORKER='https://ogref-r2.ogusho1101.workers.dev';
+const R2_MAX_MB=500;
+const _r2ViewCache={};   // r2Key -> { url, exp }
+async function r2SignView(key){
+  if(!key||!currentUser)return null;
+  const now=Date.now(), c=_r2ViewCache[key];
+  if(c&&now<c.exp)return c.url;
+  const tok=await currentUser.getIdToken();
+  const res=await fetch(R2_WORKER+'/sign-view?key='+encodeURIComponent(key),{headers:{Authorization:'Bearer '+tok}});
+  if(!res.ok)throw new Error('sign-view '+res.status);
+  const d=await res.json();
+  _r2ViewCache[key]={url:d.url, exp:now+(((d.expiresIn||1800)-60)*1000)};   // 60秒の余裕
+  return d.url;
+}
+async function r2Upload(file,onProgress){
+  if(!currentUser)throw new Error('未ログイン');
+  const tok=await currentUser.getIdToken();
+  const res=await fetch(R2_WORKER+'/sign-upload',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({contentType:file.type||'video/mp4',size:file.size})});
+  if(!res.ok){let m='sign-upload '+res.status;try{const e=await res.json();if(e.error)m=e.error;}catch(_){}throw new Error(m);}
+  const {key,uploadUrl}=await res.json();
+  await new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('PUT',uploadUrl);
+    xhr.setRequestHeader('Content-Type',file.type||'video/mp4');
+    xhr.upload.onprogress=e=>{if(onProgress&&e.lengthComputable)onProgress(e.loaded/e.total);};
+    xhr.onload=()=>{(xhr.status>=200&&xhr.status<300)?resolve():reject(new Error('PUT '+xhr.status));};
+    xhr.onerror=()=>reject(new Error('network'));
+    xhr.send(file);
+  });
+  return key;
+}
+window.openR2Upload=function(){
+  if(!currentWsId){notify('ワークスペースを開いてください');return;}
+  const inp=document.getElementById('r2FileInput');
+  if(inp)inp.click();
+};
+window.onR2FilePicked=function(e){
+  const f=e.target.files&&e.target.files[0];
+  e.target.value='';
+  if(f)handleR2FileSelected(f);
+};
+async function handleR2FileSelected(file){
+  if(!(file.type||'').startsWith('video/')){notify('動画ファイルを選んでください');return;}
+  if(file.size>R2_MAX_MB*1024*1024){notify(`ファイルが大きすぎます（上限 ${R2_MAX_MB}MB）`);return;}
+  try{
+    notify('アップロード中… 0%');
+    let last=-1;
+    const key=await r2Upload(file,p=>{const pct=Math.round(p*100);if(pct!==last){last=pct;notify('アップロード中… '+pct+'%');}});
+    const title=file.name.replace(/\.[^.]+$/,'');
+    await addDoc(collection(db,C_WS,currentWsId,'videos'),{
+      url:'r2:'+key, r2Key:key, r2Size:file.size, vid:null, platform:'r2',
+      title, tags:[], folder:null, thumb:null, startTime:0, endTime:0, fav:false,
+      createdAt:Date.now(), addedBy:currentUser.uid, addedByName:currentUser.displayName||''
+    });
+    notify('アップロード完了: '+title);
+  }catch(err){ notify('アップロード失敗: '+((err&&err.message)||err)); }
+}
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -2091,7 +2151,7 @@ function getThumb(v){
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/thumbnail?id=${v.vid}&sz=w400`;
   return'';
 }
-function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',ig:'Instagram',gd:'Drive',li:'LinkedIn',tt:'TikTok',local:'ローカル'}[p]||'OTHER'}
+function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',ig:'Instagram',gd:'Drive',li:'LinkedIn',tt:'TikTok',local:'ローカル',r2:'アップロード'}[p]||'OTHER'}
 function platformClass(p){return'badge-'+(p||'yt')}
 // badge-gd defined in CSS
 
@@ -2509,6 +2569,7 @@ let playbackSuspended=false;   // タブ非表示/無操作による自動再生
 function getEmbedUrl(v){
   if(!autoplayEnabled)return null;
   if(v.platform==='local')return v.url; // handled specially in observer
+  if(v.platform==='r2')return 'r2:'+(v.r2Key||''); // handled specially in observer
   if(v.platform==='x'||v.platform==='ig'||v.platform==='tt')return null;
   const s=v.startTime||0;
   const e=v.endTime||0;
@@ -2586,6 +2647,21 @@ function setupObserver(){
                 video.play().catch(()=>{});
               });
             }
+          }
+        } else if(platform==='r2'){
+          if(!pc.querySelector('video')){
+            const key=embUrl.replace('r2:','');
+            r2SignView(key).then(url=>{
+              if(!url||pc.querySelector('video'))return;
+              const video=document.createElement('video');
+              video.src=url; video.muted=true; video.loop=true; video.autoplay=true; video.playsInline=true;
+              video.style.cssText='width:100%;height:100%;object-fit:cover';
+              video.addEventListener('loadeddata',()=>{if(thumb)thumb.style.opacity='0'});
+              pc.appendChild(video);
+              if(cardEndTime>cardStartTime)attachVideoRangeLoop(video,cardStartTime,cardEndTime);
+              attachTileScrub(video,pc);
+              video.play().catch(()=>{});
+            }).catch(()=>{});
           }
         } else if(!pc.querySelector('iframe')){
           const createIframe=()=>{
@@ -2726,7 +2802,7 @@ function makeCard(v){
         ${thumb
           ?`<img src="${thumb}" alt="" loading="lazy">`
           :`<div class="vcard-thumb-no-img ${v.platform==='gd'?'gd':''}">
-              <span>${v.platform==='gd'?'📂':v.platform==='vm'?'🎬':v.platform==='nc'?'🎴':v.platform==='x'?'✖':v.platform==='li'?'💼':v.platform==='tt'?'🎵':'▶'}</span>
+              <span>${v.platform==='gd'?'📂':v.platform==='r2'?'☁':v.platform==='vm'?'🎬':v.platform==='nc'?'🎴':v.platform==='x'?'✖':v.platform==='li'?'💼':v.platform==='tt'?'🎵':'▶'}</span>
               <span class="no-img-label">${platformLabel(v.platform).toUpperCase()}</span>
             </div>`}
         <div class="player-container" id="pc-${v.id}"></div>
@@ -2881,6 +2957,13 @@ function renderCompareSide(v,container,muted){
       vid.addEventListener('error',()=>{container.innerHTML=_videoErrMsg;});
       container.appendChild(vid);
       vid.play().catch(()=>{});
+    }).catch(()=>{ container.innerHTML='<div class="cmp-msg">再生できませんでした</div>'; });
+  } else if(v.platform==='r2'){
+    r2SignView(v.r2Key).then(url=>{
+      const vid=document.createElement('video');
+      vid.src=url; vid.controls=true; vid.autoplay=true; vid.muted=muted; vid.playsInline=true;
+      vid.addEventListener('error',()=>{container.innerHTML=_videoErrMsg;});
+      container.appendChild(vid); vid.play().catch(()=>{});
     }).catch(()=>{ container.innerHTML='<div class="cmp-msg">再生できませんでした</div>'; });
   } else {
     const url=playerUrlWithMute(v,muted);
@@ -3966,6 +4049,16 @@ window.openPlayer=function(id){
       document.getElementById('rpQualityBtns').innerHTML=
         `<span style="padding:2px 6px;border-radius:4px;font-size:10px;background:${isLow?'var(--bg4)':'var(--accent)'};color:#fff">${isLow?'360p':'HD'}</span>`+hdBtn+lowBtn;
     });
+  } else if(v.platform==='r2'){
+    clearRangeTimer('rpanel');
+    player.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">読み込み中…</div>';
+    r2SignView(v.r2Key).then(url=>{
+      player.innerHTML=`<video src="${url}" controls autoplay loop preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+      const ve=player.querySelector('video');
+      if(ve)ve.addEventListener('error',()=>{player.innerHTML=_videoErrMsg;});
+      if(ve&&v.endTime&&v.endTime>(v.startTime||0))attachVideoRangeLoop(ve,v.startTime||0,v.endTime);
+    }).catch(()=>{player.innerHTML=_videoErrMsg;});
+    document.getElementById('rpQualityBtns').innerHTML='';
   } else {
     clearRangeTimer('rpanel');
     const embedUrl=getPlayerEmbedUrl(v);
@@ -4054,6 +4147,15 @@ window.expandToModal=function(){
     } else {
       wrap.innerHTML='';wrap.style.display='none';
     }
+  } else if(v.platform==='r2'){
+    wrap.style.display='block';
+    wrap.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:13px">読み込み中…</div>';
+    r2SignView(v.r2Key).then(url=>{
+      wrap.innerHTML=`<video src="${url}" controls autoplay loop style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+      const ve=wrap.querySelector('video');
+      if(ve)ve.addEventListener('error',()=>{wrap.innerHTML=_videoErrMsg;});
+      if(ve&&v.endTime&&v.endTime>(v.startTime||0))attachVideoRangeLoop(ve,v.startTime||0,v.endTime);
+    }).catch(()=>{wrap.innerHTML=_videoErrMsg;});
   } else {
     const embedUrl=getPlayerEmbedUrl(v);
     if(embedUrl){
