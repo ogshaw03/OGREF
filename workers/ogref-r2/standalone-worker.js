@@ -49,6 +49,10 @@ function corsHeaders(origin, allowed) {
 function json(data, status, cors) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...cors } });
 }
+// 許可するキー: uploads/（旧） か (dev_)workspaces/…/videos/…（Firestore階層）。パストラバーサル禁止。
+function keyOk(key) {
+  return /^(uploads|dev_workspaces|workspaces)\//.test(key) && !key.includes('..');
+}
 
 // ---- Firebase IDトークン検証（REST）----
 // 成功: { user }, 失敗: { error }（理由を返す＝デバッグしやすく）
@@ -132,18 +136,34 @@ export default {
         if (!contentType.startsWith('video/')) return json({ error: 'video only' }, 400, cors);
         const maxBytes = Number(env.MAX_UPLOAD_MB || 500) * 1024 * 1024;
         if (!(size > 0) || size > maxBytes) return json({ error: 'size over limit', maxBytes }, 413, cors);
-        const ext = EXT_BY_TYPE[contentType] || 'mp4';
-        const key = `uploads/${user.localId}/${crypto.randomUUID()}.${ext}`;
+        let key = String(body.key || '');
+        if (key) {
+          // クライアント指定キー（Firestore階層に合わせる）: (dev_)workspaces/{wsId}/videos/{videoId}.ext
+          if (!/^(dev_)?workspaces\/[A-Za-z0-9_-]+\/videos\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(key)) return json({ error: 'bad key' }, 400, cors);
+        } else {
+          const ext = EXT_BY_TYPE[contentType] || 'mp4';
+          key = `uploads/${user.localId}/${crypto.randomUUID()}.${ext}`;
+        }
         const ttl = Number(env.UPLOAD_URL_TTL || 600);
         const uploadUrl = await presignR2(env, key, 'PUT', ttl);
         return json({ key, uploadUrl, expiresIn: ttl }, 200, cors);
       }
       if (request.method === 'GET' && url.pathname === '/sign-view') {
         const key = url.searchParams.get('key') || '';
-        if (!/^uploads\/[^?]+$/.test(key)) return json({ error: 'bad key' }, 400, cors);
+        if (!keyOk(key)) return json({ error: 'bad key' }, 400, cors);
         const ttl = Number(env.VIEW_URL_TTL || 1800);
         const viewUrl = await presignR2(env, key, 'GET', ttl);
         return json({ url: viewUrl, expiresIn: ttl }, 200, cors);
+      }
+      // R2オブジェクト削除（動画削除時の孤児防止）。Worker→R2をサーバー側で実行。
+      if (request.method === 'POST' && url.pathname === '/delete-object') {
+        const body = await request.json().catch(() => ({}));
+        const key = String(body.key || '');
+        if (!keyOk(key)) return json({ error: 'bad key' }, 400, cors);
+        const delUrl = await presignR2(env, key, 'DELETE', 120);
+        const r = await fetch(delUrl, { method: 'DELETE' });
+        if ((r.status >= 200 && r.status < 300) || r.status === 404) return json({ ok: true }, 200, cors);
+        return json({ error: 'delete failed ' + r.status }, 502, cors);
       }
       return json({ error: 'not found' }, 404, cors);
     } catch (e) {
