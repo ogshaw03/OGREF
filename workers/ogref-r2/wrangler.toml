@@ -1,0 +1,23 @@
+name = "ogref-r2"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# ===== 公開してよい変数（コミット可） =====
+[vars]
+# Firebase プロジェクトID（IDトークン検証の issuer/audience に使用）
+PROJECT_ID = "animref-ef532"
+# R2 バケット名（dev 用）
+R2_BUCKET = "ogref-dev"
+# R2 の Account ID（S3エンドポイントのホストに使用。署名URLにも現れるため秘密ではない）
+R2_ACCOUNT_ID = "PUT_YOUR_CLOUDFLARE_ACCOUNT_ID_HERE"
+# CORS 許可オリジン（カンマ区切り）。dev配信元とローカル検証用。
+ALLOWED_ORIGINS = "https://ogshaw03.github.io,http://localhost:5500,http://127.0.0.1:5500"
+# 1ファイルの最大アップロードサイズ（MB）
+MAX_UPLOAD_MB = "500"
+# 署名URLの有効秒数
+UPLOAD_URL_TTL = "600"
+VIEW_URL_TTL = "3600"
+
+# ===== 秘密（コミットしない。`wrangler secret put <NAME>` で登録） =====
+# R2_ACCESS_KEY_ID      … R2 の S3 API トークンの Access Key ID
+# R2_SECRET_ACCESS_KEY  … 同 Secret Access Key
