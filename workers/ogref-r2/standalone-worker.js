@@ -51,16 +51,26 @@ function json(data, status, cors) {
 }
 
 // ---- Firebase IDトークン検証（REST）----
+// 成功: { user }, 失敗: { error }（理由を返す＝デバッグしやすく）
 async function verifyUser(idToken, apiKey) {
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  });
-  if (!res.ok) return null;
+  if (!apiKey) return { error: 'FIREBASE_API_KEY 未設定' };
+  let res;
+  try {
+    res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+  } catch (e) {
+    return { error: 'lookup fetch失敗: ' + String((e && e.message) || e) };
+  }
   const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const reason = (data.error && data.error.message) || ('lookup HTTP ' + res.status);
+    return { error: reason };
+  }
   const u = data.users && data.users[0];
-  return u || null; // localId = uid, email など
+  return u ? { user: u } : { error: 'no user in lookup' };
 }
 
 // ---- SigV4 クエリ署名（R2 / S3 互換）----
@@ -110,8 +120,9 @@ export default {
     const authz = request.headers.get('Authorization') || '';
     const token = authz.startsWith('Bearer ') ? authz.slice(7) : '';
     if (!token) return json({ error: 'missing token' }, 401, cors);
-    const user = await verifyUser(token, env.FIREBASE_API_KEY);
-    if (!user) return json({ error: 'invalid token' }, 401, cors);
+    const auth = await verifyUser(token, env.FIREBASE_API_KEY);
+    if (!auth.user) return json({ error: 'auth: ' + (auth.error || 'invalid') }, 401, cors);
+    const user = auth.user;
 
     try {
       if (request.method === 'POST' && url.pathname === '/sign-upload') {

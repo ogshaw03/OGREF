@@ -576,6 +576,7 @@ body.no-perm .m-menu-item.gated{display:none!important}
       <div class="nav-item" data-plat="li" onclick="setFilter('li',this)"><span class="ni-icon">💼</span>LinkedIn<span class="badge" id="badge-li">0</span></div>
       <div class="nav-item" data-plat="tt" onclick="setFilter('tt',this)"><span class="ni-icon">🎵</span>TikTok<span class="badge" id="badge-tt">0</span></div>
       <div class="nav-item" data-plat="local" onclick="setFilter('local',this)"><span class="ni-icon">💾</span>ローカル<span class="badge" id="badge-local">0</span></div>
+      <div class="nav-item" data-plat="r2" onclick="setFilter('r2',this)"><span class="ni-icon">☁️</span>アップロード<span class="badge" id="badge-r2">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">フォルダ</div>
@@ -2544,7 +2545,7 @@ function getFiltered(){
     if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
     if(state.filter==='untagged'&&(v.tags&&v.tags.length))return false;
-    if(['yt','vm','nc','x','ig','gd','li','tt','local'].includes(state.filter)&&v.platform!==state.filter)return false;
+    if(['yt','vm','nc','x','ig','gd','li','tt','local','r2'].includes(state.filter)&&v.platform!==state.filter)return false;
     if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
@@ -2881,7 +2882,7 @@ function renderGrid(){
       });
       if(folderMap['__none'])groups.push({label:'フォルダなし',items:folderMap['__none']});
     } else if(sort==='platform'){
-      const order=['yt','vm','nc','x','gd','li','tt','local','other'];
+      const order=['yt','vm','nc','x','gd','li','tt','local','r2','other'];
       const platMap={};
       list.forEach(v=>{const k=v.platform||'other';if(!platMap[k])platMap[k]=[];platMap[k].push(v);});
       order.forEach(p=>{if(platMap[p])groups.push({label:platformLabel(p),items:platMap[p]});});
@@ -3102,7 +3103,7 @@ function renderSidebar(){
   document.getElementById('badge-all').textContent=displayVids.length;
   document.getElementById('badge-fav').textContent=displayVids.filter(v=>v.fav).length;
   { const ut=document.getElementById('badge-untagged'); if(ut)ut.textContent=displayVids.filter(v=>!(v.tags&&v.tags.length)).length; }
-  ['yt','vm','nc','x','ig','gd','li','tt','local'].forEach(p=>{
+  ['yt','vm','nc','x','ig','gd','li','tt','local','r2'].forEach(p=>{
     const el=document.getElementById('badge-'+p);
     if(el)el.textContent=displayVids.filter(v=>v.platform===p).length;
   });
@@ -3131,7 +3132,8 @@ const PLAT_ICON={
   tt:`<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#000"/><path d="M14.2 4.5c.25 1.9 1.45 3.1 3.3 3.25v2.6c-1.15.05-2.25-.3-3.25-.95v5.2a4.55 4.55 0 11-4.55-4.55c.2 0 .4.02.6.05v2.65a1.95 1.95 0 100 1.85V4.5z" fill="#fff"/></svg>`,
   li:`<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#0A66C2"/><text x="12" y="17" font-size="12" font-weight="700" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif">in</text></svg>`,
   gd:`<svg viewBox="0 0 24 24"><path d="M8.6 2.8h6.8l6.6 11.4h-6.8z" fill="#FFCF63"/><path d="M1.4 14.2l3.4-5.9L12 21H4.8z" fill="#11A861"/><path d="M8.6 2.8L1.4 14.2 4.8 8.3 12 2.8z" fill="#0066DA"/><path d="M22 14.2l-3.4 5.9H4.8l3.4-5.9z" fill="#2684FC" opacity="0"/></svg>`,
-  local:`<svg viewBox="0 0 24 24"><rect x="2" y="6.5" width="20" height="11" rx="2.5" fill="#2A9D5C"/><circle cx="18" cy="12" r="1.4" fill="#fff"/></svg>`
+  local:`<svg viewBox="0 0 24 24"><rect x="2" y="6.5" width="20" height="11" rx="2.5" fill="#2A9D5C"/><circle cx="18" cy="12" r="1.4" fill="#fff"/></svg>`,
+  r2:`<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 00.3-8A5.5 5.5 0 006.5 9 3.75 3.75 0 007 18z" fill="#5a8fff"/></svg>`
 };
 let mbarMin = localStorage.getItem('ogref_dev_mbar')!=='expanded';  // 既定は最小化（アイコンのみ）
 window.toggleMbar=function(){
@@ -3179,7 +3181,7 @@ function renderMobileBars(){
     [['all','🎞','すべて',dv.length],['fav','⭐','お気に入り',dv.filter(v=>v.fav).length]]
       .forEach(([k,i,l,c])=>nav.appendChild(mk(k,i,l,c)));
     const sep=document.createElement('span');sep.className='m-sep';nav.appendChild(sep);
-    [['yt','YouTube'],['vm','Vimeo'],['nc','ニコニコ'],['x','X'],['ig','Instagram'],['tt','TikTok'],['li','LinkedIn'],['gd','Drive'],['local','ローカル']]
+    [['yt','YouTube'],['vm','Vimeo'],['nc','ニコニコ'],['x','X'],['ig','Instagram'],['tt','TikTok'],['li','LinkedIn'],['gd','Drive'],['local','ローカル'],['r2','アップロード']]
       .forEach(([k,l])=>nav.appendChild(mk(k,PLAT_ICON[k]||'▶',l,dv.filter(v=>v.platform===k).length)));
   }
   // 下部・フォルダ階層：選択するとその配下フォルダを下の段に横並び表示（潜り込み）
