@@ -11,7 +11,52 @@ OGREF に「端末から動画をアップロードして閲覧する」機能�
 
 ---
 
-## セットアップ手順（初回）
+## 【推奨・簡単】ブラウザだけでデプロイ（Node.js/ターミナル不要）
+
+`standalone-worker.js` は**ライブラリ不要の1ファイル完結版**です。Cloudflareダッシュボードに貼り付けるだけでデプロイできます。
+
+### 手順
+1. **バケット作成**：R2 → Create bucket → `ogref-projects`（非公開のまま）。
+2. **CORS設定**：R2 → `ogref-projects` → CORSポリシー → 追加 に、下記「CORS設定」のJSONを貼る。
+3. **APIトークン発行**：R2 → アカウント詳細の「APIトークン → 管理」→ **Account API トークンを作成** →
+   権限 **Object Read & Write** / 対象 `ogref-projects` → 作成 → **Access Key ID** と **Secret Access Key** を控える。
+4. **Worker作成**：ダッシュボード左「Workers & Pages」→ **Create application → Create Worker** →
+   名前 `ogref-r2` → **Deploy**（最初は雛形のままでOK）。
+5. **コードを貼り付け**：作成した Worker の **「Edit code（< > 編集）」** を開き、中身を全消去して
+   `standalone-worker.js` の内容を丸ごと貼り付け → **Deploy**。
+6. **変数を設定**：その Worker の **Settings → Variables and Secrets** で以下を登録 → Deploy/Save。
+
+   **プレーン変数（Text）**
+   | 名前 | 値 |
+   |---|---|
+   | `PROJECT_ID` | `animref-ef532` |
+   | `R2_ACCOUNT_ID` | `5006e4f3903e5857dd54aa6cda9aa183` |
+   | `R2_BUCKET` | `ogref-projects` |
+   | `FIREBASE_API_KEY` | `AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE` |
+   | `ALLOWED_ORIGINS` | `https://ogshaw03.github.io,http://localhost:5500` |
+   | `MAX_UPLOAD_MB` | `500` |
+   | `UPLOAD_URL_TTL` | `600` |
+   | `VIEW_URL_TTL` | `1800` |
+
+   **暗号化シークレット（Encrypt）**
+   | 名前 | 値 |
+   |---|---|
+   | `R2_ACCESS_KEY_ID` | 手順3の Access Key ID |
+   | `R2_SECRET_ACCESS_KEY` | 手順3の Secret Access Key |
+
+7. Worker のページ上部に出る **URL**（`https://ogref-r2.<サブドメイン>.workers.dev`）を控える。
+   - 初回は「workers.dev のサブドメインを作成」を求められたら作成する。
+
+> `FIREBASE_API_KEY` はクライアントに元々埋め込まれている**公開値**なので秘密ではありません。
+> R2の Access Key / Secret だけが秘密です（必ず「Encrypt」で登録）。
+
+---
+
+## 【上級・CLI版】wrangler でデプロイ（Node.js が必要）
+
+`src/index.js`（npm版：jose・aws4fetch使用）を使う場合の手順です。ブラウザだけで済ませたい場合は上の【推奨】でOK。
+
+### セットアップ手順（初回）
 
 ### 1. Cloudflare アカウント & R2 有効化
 1. https://dash.cloudflare.com でアカウント作成。
