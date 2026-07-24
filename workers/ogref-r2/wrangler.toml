@@ -9,7 +9,7 @@ PROJECT_ID = "animref-ef532"
 # R2 バケット名（dev 用）※小文字英数字とハイフンのみ・3〜63文字（アンダースコア不可）
 R2_BUCKET = "ogref-projects"
 # R2 の Account ID（S3エンドポイントのホストに使用。署名URLにも現れるため秘密ではない）
-R2_ACCOUNT_ID = "PUT_YOUR_CLOUDFLARE_ACCOUNT_ID_HERE"
+R2_ACCOUNT_ID = "5006e4f3903e5857dd54aa6cda9aa183"
 # CORS 許可オリジン（カンマ区切り）。dev配信元とローカル検証用。
 ALLOWED_ORIGINS = "https://ogshaw03.github.io,http://localhost:5500,http://127.0.0.1:5500"
 # 1ファイルの最大アップロードサイズ（MB）
