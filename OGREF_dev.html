@@ -950,6 +950,8 @@ const C_USERS=DEV_MODE?'dev_users':'users';
 const C_FB=DEV_MODE?'dev_feedback':'feedback';
 const C_AREQ=DEV_MODE?'dev_access_requests':'access_requests';   // アクセス権付与申請
 const C_INV=DEV_MODE?'dev_access_invites':'access_invites';      // 招待リンク（承認不要）
+// ===== モックモード（?mock=1）: 認証をバイパスしダミーデータで表示（スクショ用・dev限定）=====
+const MOCK = DEV_MODE && new URLSearchParams(location.search).has('mock');
 // ===== R2（端末からの動画アップロード・署名URL方式）=====
 const R2_WORKER='https://ogref-r2.ogusho1101.workers.dev';
 const R2_MAX_MB=500;
@@ -1076,6 +1078,7 @@ let myCanAdd=false;          // 'allowed' モード時、自分が追加を許�
 
 // ── Auth State ──
 onAuthStateChanged(auth, async user=>{
+  if(MOCK)return;   // モックモードは bootstrapMock() が起動を担うため実認証フローを止める
   document.getElementById('loadingOverlay').classList.add('hidden');
   if(user){
     currentUser=user;
@@ -1861,6 +1864,7 @@ function initLocalSnapshot(){
   localVideoSnapshot=videos.filter(v=>v.platform==='local');
 }
 function startListeners(){
+  if(MOCK)return;   // モック時はFirestore購読しない（注入配列で描画）
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
   if(unsubWs)unsubWs();
@@ -2161,6 +2165,7 @@ function getSocialEmbedUrl(v){
   return null;
 }
 function getThumb(v){
+  if(v.thumb)return v.thumb;   // 明示サムネ（Vimeo/モック等）を最優先。オフラインでも表示できる
   if(v.platform==='yt'&&v.vid)return`https://img.youtube.com/vi/${v.vid}/mqdefault.jpg`;
   if(v.platform==='vm'&&v.thumb)return v.thumb;
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/thumbnail?id=${v.vid}&sz=w400`;
@@ -4416,6 +4421,87 @@ document.addEventListener('keydown',e=>{
     if(!document.getElementById(id).classList.contains('hidden'))closeModal(id);
   });}
 });
+
+// ===================== モックモード（?mock=1）=====================
+// 認証・Firestoreをバイパスし、ダミーデータでボードを描画する（スクショ自動生成用・dev限定）。
+// Playwright からは window.__mock.load({videos,folders,wsName}) で任意シーンを注入できる。
+function _mkThumb(a,b){
+  const svg="<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'>"
+    +"<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+    +"<stop offset='0' stop-color='"+a+"'/><stop offset='1' stop-color='"+b+"'/></linearGradient></defs>"
+    +"<rect width='320' height='200' fill='url(#g)'/>"
+    +"<g fill='none' stroke='#fff' stroke-opacity='.4' stroke-width='7' stroke-linecap='round'>"
+    +"<path d='M36 150 Q120 60 200 132 T300 96'/></g>"
+    +"<circle cx='150' cy='70' r='16' fill='#fff' fill-opacity='.35'/>"
+    +"<path d='M150 86 L150 118 M150 96 L132 108 M150 96 L168 106 M150 118 L136 142 M150 118 L166 142' stroke='#fff' stroke-opacity='.4' stroke-width='6' fill='none' stroke-linecap='round'/>"
+    +"</svg>";
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+const MOCK_FOLDERS=[
+  {id:'f1',name:'走り',color:'purple',source:'manual',createdAt:Date.now()},
+  {id:'f2',name:'ジャンプ',color:'blue',source:'manual',createdAt:Date.now()},
+  {id:'f3',name:'アクション',color:'green',source:'manual',createdAt:Date.now()},
+  {id:'f4',name:'エフェクト',color:'amber',source:'manual',createdAt:Date.now()},
+];
+const MOCK_VIDEOS=(function(){
+  const t=Date.now();
+  const V=(id,platform,title,folder,tags,a,b,fav)=>({
+    id,platform,vid:'demo',url:'https://example.com/'+id,title,folder,tags:tags||[],
+    thumb:_mkThumb(a,b),fav:!!fav,startTime:0,endTime:0,note:'',
+    createdAt:t-parseInt(id.slice(1))*1000,addedBy:'mock-uid',addedByName:'Demo User'
+  });
+  return [
+    V('v1','yt','ランニングサイクル 8フレーム','f1',['ループ','走り'],'#6a4bff','#221a44',true),
+    V('v2','vm','ダッシュ 助走→加速','f1',['走り'],'#12b3c8','#0a2230'),
+    V('v3','r2','自作_走り_ラフ.mp4','f1',['ラフ','自作'],'#5a8fff','#141d38'),
+    V('v4','tt','側転からのジャンプ','f2',['ジャンプ'],'#ff5aaa','#3a1030',true),
+    V('v5','yt','二段ジャンプ 空中姿勢','f2',['ジャンプ','空中'],'#9a6bff','#241640'),
+    V('v6','gd','アクション コンボ 参考','f3',['アクション'],'#ffb85a','#3a2a0e'),
+    V('v7','x','剣の振り 軌道','f3',['アクション','軌道'],'#2fbf6a','#0e2418'),
+    V('v8','local','ローカル_殺陣_01.mov','f3',['アクション','自作'],'#3ad0c0','#0e2422'),
+    V('v9','yt','爆発エフェクト リファレンス','f4',['エフェクト'],'#ff7a3a','#3a1808',true),
+    V('v10','vm','煙・炎の流れ','f4',['エフェクト','煙'],'#5affa0','#0e2a1c'),
+    V('v11','tt','歩き 横向き','f1',['歩き','ループ'],'#7c6fff','#1a1440'),
+    V('v12','gd','着地の溜め','f2',['ジャンプ'],'#5a8fff','#0e1830'),
+  ];
+})();
+function bootstrapMock(){
+  currentUser={uid:'mock-uid',email:'demo@ogref.app',displayName:'Demo User',photoURL:''};
+  currentRole='admin'; isWsCreator=true; wsAddPermission='all'; myCanAdd=true;
+  currentWsId='mock-ws'; currentWsName='走り・アクション'; currentWsCode='DEMO';
+  autoplayEnabled=false;   // オフライン安定：サムネ表示のみ（iframe生成なし）
+  folders=MOCK_FOLDERS.slice();
+  videos=MOCK_VIDEOS.slice();
+  const hide=id=>{const e=document.getElementById(id); if(e)e.classList.add('hidden');};
+  hide('loadingOverlay'); hide('loginScreen'); hide('wsScreen'); hide('deniedScreen');
+  document.querySelectorAll('.js-ws-name').forEach(n=>n.textContent=currentWsName);
+  document.querySelectorAll('.js-ws-dot').forEach(d=>d.style.background='#7c6fff');
+  try{initAutoplayBtn();}catch(_){}
+  try{applyGridSize();}catch(_){}
+  renderAll();
+  try{setupObserver();}catch(_){}
+  // Playwright 注入フック
+  window.__mock={
+    load(data){
+      data=data||{};
+      if(Array.isArray(data.videos))videos=data.videos;
+      if(Array.isArray(data.folders))folders=data.folders;
+      if(data.wsName){currentWsName=data.wsName;document.querySelectorAll('.js-ws-name').forEach(n=>n.textContent=data.wsName);}
+      if(typeof data.autoplay==='boolean')autoplayEnabled=data.autoplay;
+      if(data.filter!=null){state.filter=data.filter;state.folder=null;state.tag=null;}
+      renderAll(); try{setupObserver();}catch(_){}
+      return {videos:videos.length,folders:folders.length};
+    },
+    setFilter(f){ state.filter=f; state.folder=null; state.tag=null; renderAll(); },
+    openFolder(id){ if(typeof setFolder==='function')setFolder(id); },
+    open(id){ if(typeof openPlayer==='function')openPlayer(id); },
+    thumb:_mkThumb
+  };
+}
+if(MOCK){
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootstrapMock);
+  else bootstrapMock();
+}
 </script>
 </body>
 </html>
