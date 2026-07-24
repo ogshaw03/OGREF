@@ -1995,10 +1995,14 @@ window.openMembersModal=async function(){
   list.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px">読み込み中...</div>';
   document.getElementById('membersModal').classList.remove('hidden');
   try{
-    const wsSnap=await getDoc(doc(db,C_WS,currentWsId));
-    const creatorUid=(wsSnap.data()||{}).createdBy||'';
-    const snap=await getDocs(collection(db,C_WS,currentWsId,'members'));
-    const members=snap.docs.map(d=>({uid:d.id,...d.data()}));
+    let creatorUid, members;
+    if(MOCK){ creatorUid='mock-uid'; members=MOCK_MEMBERS.slice(); }
+    else {
+      const wsSnap=await getDoc(doc(db,C_WS,currentWsId));
+      creatorUid=(wsSnap.data()||{}).createdBy||'';
+      const snap=await getDocs(collection(db,C_WS,currentWsId,'members'));
+      members=snap.docs.map(d=>({uid:d.id,...d.data()}));
+    }
     members.sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
     if(!members.length){ list.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px">参加者がいません</div>'; return; }
     list.innerHTML='';
@@ -4445,6 +4449,20 @@ function _mkThumb(a,b){
     +"</svg>";
   return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
+function _mkAvatar(ch,color){
+  const svg="<svg xmlns='http://www.w3.org/2000/svg' width='68' height='68'>"
+    +"<rect width='68' height='68' rx='34' fill='"+color+"'/>"
+    +"<text x='34' y='45' font-size='30' font-family='sans-serif' font-weight='700' fill='#fff' text-anchor='middle'>"+ch+"</text></svg>";
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+const MOCK_MEMBERS=[
+  {uid:'mock-uid',displayName:'山田 太郎',email:'yamada@studio.jp',photoURL:_mkAvatar('山','#7c6fff'),joinedAt:1,canAdd:true},
+  {uid:'m2',displayName:'田中 蒼',email:'tanaka@studio.jp',photoURL:_mkAvatar('田','#5a8fff'),joinedAt:2,canAdd:true},
+  {uid:'m3',displayName:'佐藤 美和',email:'sato@studio.jp',photoURL:_mkAvatar('佐','#2fbf6a'),joinedAt:3,canAdd:true},
+  {uid:'m4',displayName:'鈴木 玲',email:'suzuki@studio.jp',photoURL:_mkAvatar('鈴','#ff5aaa'),joinedAt:4,canAdd:false},
+  {uid:'m5',displayName:'高橋 大輔',email:'takahashi@studio.jp',photoURL:_mkAvatar('高','#ffb85a'),joinedAt:5,canAdd:false},
+  {uid:'m6',displayName:'渡辺 花',email:'watanabe@studio.jp',photoURL:_mkAvatar('渡','#12b3c8'),joinedAt:6,canAdd:false},
+];
 const MOCK_FOLDERS=[
   {id:'f1',name:'走り',color:'purple',source:'manual',createdAt:Date.now()},
   {id:'f2',name:'ジャンプ',color:'blue',source:'manual',createdAt:Date.now()},
