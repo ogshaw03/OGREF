@@ -6,8 +6,8 @@ compatibility_date = "2024-11-01"
 [vars]
 # Firebase プロジェクトID（IDトークン検証の issuer/audience に使用）
 PROJECT_ID = "animref-ef532"
-# R2 バケット名（dev 用）
-R2_BUCKET = "ogref-dev"
+# R2 バケット名（dev 用）※小文字英数字とハイフンのみ・3〜63文字（アンダースコア不可）
+R2_BUCKET = "ogref-projects"
 # R2 の Account ID（S3エンドポイントのホストに使用。署名URLにも現れるため秘密ではない）
 R2_ACCOUNT_ID = "PUT_YOUR_CLOUDFLARE_ACCOUNT_ID_HERE"
 # CORS 許可オリジン（カンマ区切り）。dev配信元とローカル検証用。

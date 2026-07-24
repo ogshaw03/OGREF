@@ -18,12 +18,13 @@ OGREF に「端末から動画をアップロードして閲覧する」機能�
 2. 左メニュー **R2** を開き、**Enable**（R2利用にはカード登録が必要。無料枠内なら課金なし）。
 
 ### 2. バケット作成
-- **R2 → Create bucket** → 名前 `ogref-dev`（`wrangler.toml` の `R2_BUCKET` と一致させる）。
+- **R2 → Create bucket** → 名前 `ogref-projects`（`wrangler.toml` の `R2_BUCKET` と一致させる）。
+  - ※バケット名は**小文字英数字とハイフンのみ・3〜63文字**（アンダースコア不可）。
 - 公開設定は**オフのまま**（非公開）。
 
 ### 3. R2 API トークン（S3）発行
 - **R2 → Manage R2 API Tokens → Create API token**
-- 権限: **Object Read & Write**、対象バケット: `ogref-dev`。
+- 権限: **Object Read & Write**、対象バケット: `ogref-projects`。
 - 発行結果の **Access Key ID / Secret Access Key** を控える（Secretは再表示不可）。
 - **Account ID** は R2 概要ページ右側に表示。`wrangler.toml` の `R2_ACCOUNT_ID` に記入。
 
@@ -37,7 +38,7 @@ npx wrangler login        # ブラウザで認証
 ### 5. 変数と秘密の設定
 - `wrangler.toml` の `[vars]` を編集:
   - `R2_ACCOUNT_ID` … 手順3の Account ID
-  - `R2_BUCKET` … `ogref-dev`
+  - `R2_BUCKET` … `ogref-projects`
   - `PROJECT_ID` … `animref-ef532`（変更不要）
   - `ALLOWED_ORIGINS` … 配信元。GitHub Pages は `https://ogshaw03.github.io`
   - `MAX_UPLOAD_MB` … 1ファイル上限（初期 500）
