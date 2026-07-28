@@ -73,8 +73,11 @@ nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
 .eyebrow{display:inline-flex; align-items:center; gap:9px; font-family:var(--mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase;
   color:var(--violet-2); border:1px solid #7c6fff44; background:#7c6fff12; padding:7px 14px; border-radius:999px; margin-bottom:26px}
 .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse 2s infinite}
-h1{font-family:var(--display); font-weight:800; line-height:1.04; letter-spacing:-.02em;
-  font-size:clamp(38px,7vw,80px); margin-bottom:22px}
+h1{font-family:var(--display); font-weight:800; line-height:1.08; letter-spacing:-.02em;
+  font-size:clamp(30px,5.2vw,60px); margin-bottom:22px}
+/* 不自然な折り返し・行末の孤立を防ぐ（見出しは行を均等化、本文は最終行の孤立語を回避） */
+h1,h2,h3,h4{text-wrap:balance}
+p,.lead{text-wrap:pretty}
 h1 .accent{background:linear-gradient(120deg,var(--violet-2),var(--blue) 60%,var(--green)); -webkit-background-clip:text; background-clip:text; color:transparent}
 .lead{max-width:640px; margin:0 auto 34px; font-size:clamp(16px,2vw,19px); color:var(--muted)}
 .hero-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:16px}
@@ -153,7 +156,7 @@ h1 .accent{background:linear-gradient(120deg,var(--violet-2),var(--blue) 60%,var
 /* ---- section shells ---- */
 section{position:relative; z-index:1}
 .sec{padding:90px 0}
-.sec-head{text-align:center; max-width:720px; margin:0 auto 54px}
+.sec-head{text-align:center; max-width:860px; margin:0 auto 54px}
 .kicker{font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--violet-2); margin-bottom:14px}
 .sec-head h2{font-family:var(--display); font-weight:800; font-size:clamp(28px,4.4vw,46px); line-height:1.1; letter-spacing:-.015em; margin-bottom:16px}
 .sec-head p{color:var(--muted); font-size:17px}
@@ -352,7 +355,7 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
     <div class="collab-feats">
       <div class="cf"><span class="ck">⚡</span><b>リアルタイム反映</b><span>追加・移動・削除がその場で全員に同期</span></div>
       <div class="cf"><span class="ck">🔗</span><b>招待コード / リンク</b><span>ワンクリックでメンバー参加。承認不要リンクも</span></div>
-      <div class="cf"><span class="ck">🛡️</span><b>権限管理</b><span>運営 / 管理者 / メンバーの3区分で制御</span></div>
+      <div class="cf"><span class="ck">🛡️</span><b>権限管理</b><span>作成者がメンバーの編集権限を設定できます</span></div>
       <div class="cf"><span class="ck">🗂️</span><b>共有ワークスペース</b><span>案件ごとに分けて、チームで整理</span></div>
     </div>
     <div class="collab-shots">
