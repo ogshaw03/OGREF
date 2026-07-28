@@ -33,9 +33,14 @@ body::before{
 .tilebg{position:fixed; inset:0; z-index:0; pointer-events:none; display:grid; gap:7px; padding:7px;
   mask-image:linear-gradient(180deg,#000,#000 80%,transparent);
   -webkit-mask-image:linear-gradient(180deg,#000,#000 80%,transparent)}
-.bgtile{border:1px solid rgba(255,255,255,.055); border-radius:13px; background:rgba(255,255,255,.014);
-  opacity:0; transform:scale(.9); animation:tileIn .55s cubic-bezier(.2,.7,.2,1) forwards}
-@keyframes tileIn{to{opacity:1; transform:scale(1)}}
+.bgtile{border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.022);
+  opacity:0; animation:tilePop .6s cubic-bezier(.2,.9,.25,1) forwards; will-change:transform,opacity}
+/* 生成の瞬間にバイオレットで一瞬ポップ→定常のタイルへ（チームがタイルを足していく様子） */
+@keyframes tilePop{
+  0%  {opacity:0; transform:scale(.45); border-color:rgba(124,111,255,0); background:rgba(124,111,255,0); box-shadow:0 0 0 rgba(124,111,255,0)}
+  45% {opacity:1; transform:scale(1.07); border-color:rgba(160,146,255,.9); background:rgba(124,111,255,.18); box-shadow:0 0 26px rgba(124,111,255,.45)}
+  100%{opacity:1; transform:scale(1); border-color:rgba(255,255,255,.09); background:rgba(255,255,255,.022); box-shadow:0 0 0 rgba(124,111,255,0)}
+}
 .tilebg.instant .bgtile{animation:none; opacity:1; transform:none}
 @media (prefers-reduced-motion: reduce){ .bgtile{animation:none!important; opacity:1; transform:none} }
 .glow{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
@@ -452,11 +457,10 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
   <div class="wrap">
     <div class="sec-head">
       <div class="kicker">Pricing</div>
-      <h2>ワンコインから、チームまで</h2>
-      <p>リンクの埋め込みはずっと無制限。課金対象はクラウドにアップした動画の容量だけ。視聴は無制限です。</p>
+      <h2>シンプルな2つのプラン</h2>
+      <p>まずは無料で。リンクの埋め込みはずっと無制限。課金対象はクラウドにアップした動画の容量だけで、視聴は無制限です。</p>
     </div>
-    <div class="plan-tabs"><span class="plan-tab" style="color:#fff;border-color:#7c6fff">個人向け</span><span class="plan-tab">企業向けは下にスクロール</span></div>
-    <div class="plans">
+    <div class="plans" style="grid-template-columns:repeat(2,1fr); max-width:680px">
       <div class="plan">
         <div class="pn">Free</div>
         <div class="price">¥0</div>
@@ -481,42 +485,6 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
           <li><span class="ck">✓</span>観覧URL・パスワード保護</li>
         </ul>
         <a class="btn btn-primary" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">ワンコインで始める</a>
-      </div>
-      <div class="plan">
-        <div class="pn">Plus</div>
-        <div class="price">¥1,000<small>/月</small></div>
-        <div class="sub">たっぷり保存したい人へ</div>
-        <ul>
-          <li><span class="ck">✓</span>ワンコインの全機能</li>
-          <li><span class="ck">✓</span>アップロード 100GB</li>
-          <li><span class="ck">✓</span>優先サポート</li>
-          <li><span class="ck">✓</span>高度な共有設定</li>
-        </ul>
-        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">Plusにする</a>
-      </div>
-    </div>
-
-    <div class="plans" style="margin-top:18px">
-      <div class="plan">
-        <div class="pn">Team · Small</div>
-        <div class="price">¥5,000<small>/月</small></div>
-        <div class="sub">5席 / 500GB プール</div>
-        <ul><li><span class="ck">✓</span>チーム共有ワークスペース</li><li><span class="ck">✓</span>メンバー管理・招待</li><li><span class="ck">✓</span>視聴 無制限</li></ul>
-        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
-      </div>
-      <div class="plan">
-        <div class="pn">Team · Standard</div>
-        <div class="price">¥5,000<small>〜</small></div>
-        <div class="sub">10席 / 1TB プール</div>
-        <ul><li><span class="ck">✓</span>席数×容量で柔軟に</li><li><span class="ck">✓</span>アクセス権の細かな管理</li><li><span class="ck">✓</span>運営コンソール</li></ul>
-        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
-      </div>
-      <div class="plan">
-        <div class="pn">Team · Large</div>
-        <div class="price">¥15,000<small>/月</small></div>
-        <div class="sub">30席 / 3TB プール</div>
-        <ul><li><span class="ck">✓</span>大人数の制作チーム向け</li><li><span class="ck">✓</span>組織単位のデータ分離</li><li><span class="ck">✓</span>優先サポート</li></ul>
-        <a class="btn btn-ghost" href="https://ogshaw03.github.io/OGREF/OGREF_Beta.html">相談する</a>
       </div>
     </div>
     <p class="hero-note" style="text-align:center; margin-top:22px; opacity:.7">※ 価格・容量は予定です。内容は変更される場合があります。</p>
@@ -562,7 +530,7 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 // 背景のタイルグリッド：開いた瞬間に左上から順（対角線状）に生成される。
 (function(){
   var bg=document.querySelector('.tilebg'); if(!bg)return;
-  var TW=188, TH=128, STEP=45;   // タイルの幅/高さの目安と、1マスあたりの遅延(ms)
+  var TW=188, TH=128, STEP=55;   // タイルの幅/高さの目安と、1マスあたりの遅延(ms)
   function build(animate){
     var cols=Math.ceil(window.innerWidth/TW)+1;
     var rows=Math.ceil(window.innerHeight/TH)+1;
