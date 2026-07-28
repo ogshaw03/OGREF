@@ -30,11 +30,14 @@ body::before{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 /* タイルが並ぶグリッド背景（リファレンスボードのモチーフ・控えめ） */
-.tilebg{position:fixed; inset:0; z-index:0; pointer-events:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='208' height='140'%3E%3Crect x='5' y='5' width='198' height='130' rx='13' fill='%23ffffff' fill-opacity='0.014' stroke='%23ffffff' stroke-opacity='0.05' stroke-width='1'/%3E%3C/svg%3E");
-  background-position:center -6px;
-  mask-image:linear-gradient(180deg,#000,#000 82%,transparent);
-  -webkit-mask-image:linear-gradient(180deg,#000,#000 82%,transparent)}
+.tilebg{position:fixed; inset:0; z-index:0; pointer-events:none; display:grid; gap:7px; padding:7px;
+  mask-image:linear-gradient(180deg,#000,#000 80%,transparent);
+  -webkit-mask-image:linear-gradient(180deg,#000,#000 80%,transparent)}
+.bgtile{border:1px solid rgba(255,255,255,.055); border-radius:13px; background:rgba(255,255,255,.014);
+  opacity:0; transform:scale(.9); animation:tileIn .55s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes tileIn{to{opacity:1; transform:scale(1)}}
+.tilebg.instant .bgtile{animation:none; opacity:1; transform:none}
+@media (prefers-reduced-motion: reduce){ .bgtile{animation:none!important; opacity:1; transform:none} }
 .glow{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
 .glow::before,.glow::after{content:""; position:absolute; border-radius:50%; filter:blur(120px); opacity:.5}
 .glow::before{width:640px;height:640px; top:-220px; left:-120px; background:radial-gradient(circle,#5a3cff55,transparent 70%)}
@@ -556,18 +559,27 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 </footer>
 
 <script>
-// タイルに動き（速度線）のSVGを差し込む。プレースホルダ __POSE__ を軽量SVGへ置換。
+// 背景のタイルグリッド：開いた瞬間に左上から順（対角線状）に生成される。
 (function(){
-  const poses = {
-    RUN:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><g stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"><path d="M8 40c14-6 24-4 34-14M12 50c18-8 30-4 44-16M20 58c16-6 28-6 40-16"/></g><circle cx="70" cy="20" r="7" fill="#ffffff" opacity="0.5"/><path d="M62 30l14 4-6 16 8 6M70 34l-4 14" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/></svg>',
-    JUMP:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><circle cx="52" cy="16" r="7" fill="#ffffff" opacity="0.5"/><path d="M52 24c-6 6-6 14-2 18M52 24c8 4 12 2 16-2M50 42l-6 12M52 42l8 10" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/><g stroke="#ffffff" stroke-width="2" opacity="0.35"><path d="M20 54h60M28 60h44"/></g></svg>',
-    WALK:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><circle cx="50" cy="16" r="7" fill="#ffffff" opacity="0.45"/><path d="M50 24v16M50 40l-8 14M50 40l8 14M50 30l-10 4M50 30l10 6" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.45"/></svg>',
-    SPIN:'<svg viewBox="0 0 100 62" preserveAspectRatio="none"><g fill="none" stroke="#ffffff" opacity="0.4"><ellipse cx="50" cy="31" rx="34" ry="14" stroke-width="2"/><ellipse cx="50" cy="31" rx="22" ry="26" stroke-width="2"/></g><circle cx="50" cy="31" r="5" fill="#ffffff" opacity="0.55"/></svg>'
-  };
-  document.querySelectorAll('.mo').forEach(function(el){
-    var k=(el.textContent||'').replace(/_/g,'').trim();
-    el.innerHTML = poses[k] || '';
-  });
+  var bg=document.querySelector('.tilebg'); if(!bg)return;
+  var TW=188, TH=128, STEP=45;   // タイルの幅/高さの目安と、1マスあたりの遅延(ms)
+  function build(animate){
+    var cols=Math.ceil(window.innerWidth/TW)+1;
+    var rows=Math.ceil(window.innerHeight/TH)+1;
+    bg.style.gridTemplateColumns='repeat('+cols+',1fr)';
+    bg.style.gridTemplateRows='repeat('+rows+','+TH+'px)';
+    bg.classList.toggle('instant', !animate);
+    var html='';
+    for(var r=0;r<rows;r++){
+      for(var c=0;c<cols;c++){
+        html+='<span class="bgtile" style="animation-delay:'+((r+c)*STEP)+'ms"></span>';
+      }
+    }
+    bg.innerHTML=html;
+  }
+  build(true);
+  // リサイズ時は再構築（アニメーションはやり直さず即表示）
+  var t; window.addEventListener('resize', function(){ clearTimeout(t); t=setTimeout(function(){ build(false); }, 200); });
 })();
 </script>
 </body>
