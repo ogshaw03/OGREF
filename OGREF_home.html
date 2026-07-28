@@ -77,8 +77,8 @@ nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
 h1{font-family:var(--display); font-weight:800; line-height:1.08; letter-spacing:-.02em;
   font-size:clamp(30px,5.2vw,60px); margin-bottom:22px}
 /* 不自然な折り返し・行末の孤立を防ぐ（見出しは行を均等化、本文は最終行の孤立語を回避） */
-h1,h2,h3,h4{text-wrap:balance}
-p,.lead{text-wrap:pretty}
+h1,h2,h3,h4{text-wrap:balance; word-break:auto-phrase}
+p,.lead{text-wrap:pretty; word-break:auto-phrase}
 h1 .accent{background:linear-gradient(120deg,var(--violet-2),var(--blue) 60%,var(--green)); -webkit-background-clip:text; background-clip:text; color:transparent}
 .lead{max-width:640px; margin:0 auto 34px; font-size:clamp(16px,2vw,19px); color:var(--muted)}
 .hero-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:16px}
