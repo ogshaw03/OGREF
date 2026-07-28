@@ -55,7 +55,8 @@ img,svg{display:block}
 nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
   background:linear-gradient(180deg,#0a0b0fee,#0a0b0fbb); border-bottom:1px solid #ffffff0d}
 .nav-in{max-width:var(--maxw); margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:22px}
-.brand{display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:800; font-size:20px; letter-spacing:.5px}
+.brand{display:flex; align-items:center; gap:10px}
+.brand-logo{height:34px; width:auto; display:block}
 .mark{width:30px;height:30px;flex:0 0 auto}
 .nav-links{display:flex; gap:26px; margin-left:14px; font-size:14px; color:var(--muted)}
 .nav-links a{transition:.2s} .nav-links a:hover{color:var(--text)}
@@ -268,7 +269,7 @@ section{position:relative; z-index:1}
 /* ---- footer ---- */
 footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)}
 .foot{display:flex; flex-wrap:wrap; gap:24px; align-items:center; justify-content:space-between}
-.foot .brand{font-size:18px}
+.foot .brand-logo{height:30px}
 .foot-links{display:flex; gap:22px; font-size:14px; color:var(--muted); flex-wrap:wrap}
 .foot-links a:hover{color:var(--text)}
 .foot small{font-size:12.5px; font-family:var(--mono)}
@@ -282,14 +283,8 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 <!-- ================= NAV ================= -->
 <nav>
   <div class="nav-in">
-    <a class="brand" href="#top">
-      <svg class="mark" viewBox="0 0 32 32" fill="none">
-        <rect x="1.5" y="1.5" width="29" height="29" rx="9" stroke="url(#mg)" stroke-width="2"/>
-        <path d="M13 11.2v9.6l8-4.8-8-4.8Z" fill="url(#mg)"/>
-        <defs><linearGradient id="mg" x1="0" y1="0" x2="32" y2="32">
-          <stop stop-color="#9a8cff"/><stop offset="1" stop-color="#5a8fff"/></linearGradient></defs>
-      </svg>
-      OGREF
+    <a class="brand" href="#top" aria-label="OGREF">
+      <img class="brand-logo" src="assets/ogref-logo.png" alt="OGREF — Animation Reference Manager">
     </a>
     <div class="nav-links">
       <a href="#team">共同構築</a>
@@ -509,13 +504,8 @@ footer{border-top:1px solid var(--line); padding:44px 0 60px; color:var(--faint)
 <footer>
   <div class="wrap">
     <div class="foot">
-      <a class="brand" href="#top">
-        <svg class="mark" viewBox="0 0 32 32" fill="none">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" stroke="url(#mg2)" stroke-width="2"/>
-          <path d="M13 11.2v9.6l8-4.8-8-4.8Z" fill="url(#mg2)"/>
-          <defs><linearGradient id="mg2" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#9a8cff"/><stop offset="1" stop-color="#5a8fff"/></linearGradient></defs>
-        </svg>
-        OGREF
+      <a class="brand" href="#top" aria-label="OGREF">
+        <img class="brand-logo" src="assets/ogref-logo.png" alt="OGREF">
       </a>
       <div class="foot-links">
         <a href="#features">機能</a>
